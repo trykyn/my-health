@@ -377,7 +377,7 @@ function todayHero(ds) {
       <div class="hero-facts">
         <span class="pill ${min >= S.goal ? 'done' : ''}">${status}</span>
         <div><b class="num">${rec.steps != null ? fmtInt(rec.steps) : '–'}</b><span>걸음</span></div>
-        ${rec.min != null && mineOf(ds).length ? `<div class="sub" style="font-size:13px">워치 ${rec.min}분 · 직접 ${mineOf(ds).reduce((a, x) => a + (x.min || 0), 0)}분</div>` : ''}
+        ${(() => { const k = mineOf(ds).reduce((a, x) => a + (x.kcal || 0), 0); return k ? `<div><b class="num">${fmtInt(k)}</b><span>운동 kcal</span></div>` : ''; })()}
         <span class="sub" style="font-size:12px">${rec.at ? `${hm(new Date(rec.at))} ${rec.manual ? '직접 적음' : '워치에서 받음'}` : '오늘 워치 기록 없음'}</span>
       </div>
     </div>
@@ -398,7 +398,7 @@ function calendarCard(today) {
     const ds = ymd(new Date(y, m, d)), min = dayMin(ds), mine = mineOf(ds).length;
     if (min > 0 || mine) active++;
     const cls = ['day', ds === today && 'today', ds === sel && ds !== today && 'sel', ds > today && 'future'].filter(Boolean).join(' ');
-    cells += `<button class="${cls}" data-day="${ds}" aria-label="${longDate(ds)}${min ? `, 운동 ${min}분` : ''}${mine ? `, 직접 추가한 운동 ${mine}개` : ''}">
+    cells += `<button class="${cls}" data-day="${ds}" aria-label="${longDate(ds)}${min ? `, 운동 ${min}분` : ''}${mine ? `, 운동 기록 ${mine}개` : ''}">
       <span class="dn num">${d}</span>${ds > today ? '<svg class="ring"></svg>' : ring(min)}
       <span class="dm num">${min ? min + '분' : ''}</span>${mine ? '<i class="my"></i>' : ''}${ibDates.has(ds) ? '<i class="ib"></i>' : ''}</button>`;
   }
@@ -409,7 +409,7 @@ function calendarCard(today) {
     </div>
     <div class="wk">${WD.map(w => `<span>${w}</span>`).join('')}</div>
     <div class="grid" id="grid">${cells}</div>
-    <div class="legend-line"><span>링 = 하루 목표 ${S.goal}분 중 채운 만큼</span><span><i class="lg-my"></i>직접 추가한 운동</span><span><i></i>인바디 잰 날</span></div>
+    <div class="legend-line"><span>링 = 하루 목표 ${S.goal}분 중 채운 만큼</span><span><i class="lg-my"></i>운동 기록</span><span><i></i>인바디 잰 날</span></div>
   </div>`;
 }
 
@@ -424,7 +424,7 @@ const WORKOUT_KO = [
   [/mind/i, '마음 챙김'], [/tennis/i, '테니스'], [/badminton/i, '배드민턴'], [/^other$/i, '기타'],
 ];
 const workoutName = x => { for (const [re, ko] of WORKOUT_KO) if (re.test(x)) return ko; return x; };
-const QUICK = ['헬스', 'PT', '걷기', '러닝', '요가', '필라테스', '수영', '자전거', '스트레칭'];
+const QUICK = ['필라테스', '러닝', '헬스', '자전거', '홈트레이닝'];
 
 // 그날 운동 목록: 워치 운동 + 내가 추가한 운동을 한 목록으로, 출처 표시와 함께
 function workoutsBlock(ds, title) {
@@ -433,16 +433,17 @@ function workoutsBlock(ds, title) {
   const recent = [...new Set(Object.values(S.data.mine || {}).flat().map(x => x.name))].filter(n => !QUICK.includes(n)).slice(-6);
   const items = [
     ...watch.map(x => `<li><span class="wo-dot watch"></span><span class="wo-name">${esc(workoutName(x))}</span><span class="src">워치</span></li>`),
-    ...mine.map(x => `<li><span class="wo-dot"></span><span class="wo-name">${esc(x.name)}${x.min ? ` <span class="sub num">· ${x.min}분</span>` : ''}${x.note ? `<span class="wo-note">${esc(x.note)}</span>` : ''}</span>
+    ...mine.map(x => `<li><span class="wo-dot"></span><span class="wo-name">${esc(x.name)}${x.min || x.kcal ? ` <span class="sub num">${x.min ? `· ${x.min}분 ` : ''}${x.kcal ? `· ${fmtInt(x.kcal)}kcal` : ''}</span>` : ''}${x.note ? `<span class="wo-note">${esc(x.note)}</span>` : ''}</span>
       <button class="x" data-del-mine="${esc(x.id)}" data-date="${ds}" aria-label="${esc(x.name)} 지우기">${X_ICON}</button></li>`),
   ];
   return `<div class="wo-head"><h3>${title}</h3>${!future && !open ? `<button class="btn small" data-act="mine-open" data-date="${ds}">＋ 운동 추가</button>` : ''}</div>
-    ${items.length ? `<ul class="wo">${items.join('')}</ul>` : open ? '' : `<p class="sub wo-empty">${future ? '–' : '워치 운동이 오면 여기에 보이고, 따로 한 운동은 ＋로 적어요.'}</p>`}
+    ${items.length ? `<ul class="wo">${items.join('')}</ul>` : open ? '' : `<p class="sub wo-empty">${future ? '–' : '＋를 눌러 워치에 나온 시간과 칼로리를 적어요.'}</p>`}
     ${open ? `<div class="mine-form">
       <div class="chips">${[...QUICK, ...recent].map(n => `<button class="chip pick ${S.drafts['mine-name'] === n ? 'on' : ''}" data-pick="${esc(n)}">${esc(n)}</button>`).join('')}</div>
       <div class="form-grid" style="margin-top:10px">
-        <label class="fld">운동 이름<input id="m-name" data-draft="mine-name" value="${draft('mine-name')}" placeholder="예: 하체 운동"></label>
-        <label class="fld">시간 (분)<input id="m-min" data-draft="mine-min" value="${draft('mine-min')}" inputmode="numeric" placeholder="예: 50"></label>
+        <label class="fld" style="grid-column:1/-1">운동 이름<input id="m-name" data-draft="mine-name" value="${draft('mine-name')}" placeholder="위에서 고르거나 직접 적기"></label>
+        <label class="fld">시간 (분)<input id="m-min" data-draft="mine-min" value="${draft('mine-min')}" inputmode="numeric" placeholder="예: 45"></label>
+        <label class="fld">칼로리 (kcal)<input id="m-kcal" data-draft="mine-kcal" value="${draft('mine-kcal')}" inputmode="numeric" placeholder="예: 320"></label>
       </div>
       <label class="fld">메모 (선택)<input id="m-note" data-draft="mine-note" value="${draft('mine-note')}" placeholder="예: 스쿼트 40kg 5세트"></label>
       <div class="detail-foot"><span></span><span style="display:flex;gap:8px"><button class="btn small ghost" data-act="mine-cancel">취소</button><button class="btn small" data-act="mine-save" data-date="${ds}">추가</button></span></div>
@@ -631,7 +632,6 @@ function renderSettings() {
             <tr><td>키 <code>steps</code></td><td>값: 2번 '건강 샘플' 변수</td></tr>
           </table>
           <span class="sub">통계 계산은 필요 없어요. 샘플을 그대로 보내면 서버가 더해요.</span></li>
-        <li><b>워치 운동 목록도 보내려면</b>: URL 동작 위에 <b>건강 샘플 찾기</b>를 하나 더 → 유형 <b>운동</b>, 필터 <b>시작일 · 오늘임</b> → URL 동작에 텍스트 필드 추가: 키 <code>workouts</code>, 값은 그 '건강 샘플' 변수.</li>
         <li>빨간 줄 "설정에서 이 동작을 허용할 수 있습니다"가 보이면 눌러서 허용하거나, 설정 → 앱 → 단축어 → 고급에서 데이터 공유를 허용해요.</li>
         <li>▶︎ 눌러서 한 번 실행 → 건강 데이터 접근 <b>허용</b>. "저장됨 …"이 나오고 이 앱 달력에 오늘 기록이 보이면 성공!</li>
       </ol>
@@ -695,8 +695,11 @@ document.addEventListener('click', async ev => {
     if (!name) { toast('운동 이름을 적거나 골라 주세요'); return; }
     const min = parseInt($('#m-min').value.replace(/\D/g, ''), 10);
     const note = $('#m-note').value.trim();
+    const kcal = parseInt($('#m-kcal').value.replace(/\D/g, ''), 10);
+    if (!(min > 0) && !(kcal > 0) && !confirm('시간과 칼로리 없이 추가할까요?')) return;
     const item = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name };
     if (min > 0) item.min = min;
+    if (kcal > 0) item.kcal = kcal;
     if (note) item.note = note;
     const list = [...mineOf(ds), item];
     S.data.mine = S.data.mine || {}; S.data.mine[ds] = list;

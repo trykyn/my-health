@@ -2,7 +2,7 @@
 // 앱 파일은 매번 서버에 "바뀌었나요?"를 물어봄(cache: 'no-cache'). GitHub Pages의 10분 저장 표시 때문에
 // 홈 화면 앱이 껐다 켜도 예전 화면을 보여 주는 일을 막음.
 // 동기화 서버(workers.dev)로 가는 요청은 건드리지 않음.
-const CACHE = 'my-health-v5';
+const CACHE = 'my-health-v6';
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./', 'index.html', 'manifest.webmanifest', 'icon.svg'])));
