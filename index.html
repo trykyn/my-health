@@ -217,6 +217,65 @@ ol.steps b { font-weight: 600; }
 .field-tbl code { font: 13px ui-monospace, Menlo, monospace; background: var(--field); padding: 1px 5px; border-radius: 5px; }
 .inline { display: flex; gap: 8px; align-items: flex-end; }
 .inline .fld { flex: 1; }
+/* ── 헬스 ── */
+.plan-line { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.plan-line span { color: var(--ink); font-weight: 700; background: var(--field); border-radius: 99px; padding: 1px 8px; }
+.plan-line span.ok { background: var(--soft); color: var(--accent); }
+.pweek { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.pd { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 1px 7px; border-radius: 14px; background: var(--field); min-height: 76px; }
+.pd-w { font-size: 11px; color: var(--muted); }
+.pd-d { font-size: 15px; font-weight: 800; line-height: 1.1; }
+.pd-i { font-size: 11px; font-weight: 700; line-height: 1.3; padding: 0 4px; border-radius: 6px; background: var(--card); max-width: 100%; overflow: hidden; white-space: nowrap; }
+.pd-i.ok { background: var(--accent); color: var(--accent-ink); }
+.pd-i.none { background: none; color: var(--line); }
+.pd.today { box-shadow: inset 0 0 0 2px var(--accent); }
+.pd.sel { background: var(--soft); }
+.pd.done { background: var(--soft); }
+.pedit { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.gx { border-top: 1px solid var(--line); padding: 12px 0 8px; }
+.gx:first-of-type { border-top: 0; }
+.gx-head { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 6px; }
+.gx-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.gx-name b { font-size: 16px; font-weight: 800; }
+.gx-grp { font-size: 12px; color: var(--accent); font-weight: 700; }
+.gx-last { font-size: 12px; color: var(--muted); }
+.gx-yt { font-size: 12px; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; align-self: flex-start; }
+.gx .x { flex: none; width: 28px; height: 28px; border-radius: 50%; color: var(--muted); display: grid; place-items: center; }
+.gx .x svg { width: 16px; height: 16px; }
+.gs { display: flex; align-items: center; gap: 6px; padding: 4px 0; }
+.gs-n { width: 22px; height: 22px; border-radius: 50%; background: var(--field); font-size: 12px; font-weight: 700; display: grid; place-items: center; flex: none; }
+.gs input { width: 64px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--field); text-align: center; font-size: 17px; font-weight: 700; color: var(--ink); }
+.gs input:focus { outline: 0; border-color: var(--accent); }
+.gs-u { font-size: 13px; color: var(--muted); }
+.gs-ok { margin-left: auto; width: 40px; height: 40px; border-radius: 50%; background: var(--field); color: var(--muted); font-size: 18px; font-weight: 800; box-shadow: inset 0 0 0 1px var(--line); }
+.gs.done .gs-ok { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.gs.done .gs-n { background: var(--accent); color: var(--accent-ink); }
+.gs.done input { background: var(--soft); border-color: transparent; }
+.gx-foot { display: flex; gap: 14px; padding-left: 28px; }
+.gym-end { display: flex; gap: 8px; margin-top: 12px; }
+.gym-end .btn:last-child { flex: 1; }
+.picker { margin-top: 8px; border-top: 1px solid var(--line); }
+.pk-g h4 { margin: 12px 0 4px; font-size: 13px; color: var(--accent); }
+.pk { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 4px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.pk span { flex: 1; }
+.pk b { font-size: 13px; color: var(--accent); }
+.pk.have b { color: var(--muted); font-weight: 500; }
+.fig { flex: none; background: var(--field); border-radius: 14px; }
+.fig .pr { stroke: var(--muted); fill: none; stroke-width: 2.5; stroke-linecap: round; opacity: .45; }
+.fig .pr rect, .fig .pr polygon { fill: var(--muted); stroke: none; }
+.fig .bd path, .fig .far path { stroke: var(--accent); stroke-width: 5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.fig .far { opacity: .35; }
+.fig .hd { fill: var(--accent); }
+.fig .at path { stroke: var(--ink); fill: none; stroke-linecap: round; }
+.fig .at circle { fill: var(--ink); }
+.fig .at circle.pl { fill: none; stroke: var(--ink); stroke-width: 3; }
+.fig .at path.cb { stroke: var(--muted); stroke-width: 1; }
+#rest { position: fixed; left: 12px; right: 12px; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 6; max-width: 516px; margin: 0 auto;
+  display: flex; align-items: center; gap: 10px; background: var(--ink); color: var(--bg); border-radius: 16px; padding: 10px 14px; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+#rest b { font-size: 22px; font-weight: 800; min-width: 52px; }
+#rest i { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.2); overflow: hidden; }
+#rest s { display: block; height: 100%; background: var(--accent); text-decoration: none; }
+#rest button { font-size: 13px; font-weight: 700; color: var(--bg); padding: 6px 4px; }
 #toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 12px; font-size: 15px; z-index: 20; white-space: nowrap; }
 </style>
 </head>
@@ -242,6 +301,7 @@ ol.steps b { font-weight: 600; }
 
 <dialog id="settings"><div class="sheet" id="sheet"></div></dialog>
 <div id="toast" hidden></div>
+<div id="rest" hidden><span>휴식</span><b class="num">1:00</b><i><s></s></i><button data-act="rest-add">+30초</button><button data-act="rest-skip">건너뛰기</button></div>
 
 <script>
 // ─────────────────────────────────────────────────────────────────────────────
@@ -401,6 +461,7 @@ function todayHero(ds) {
       ${bigRing(min)}
       <div class="hero-facts">
         <span class="pill ${min >= S.goal ? 'done' : ''}">${status}</span>
+        ${planOf(ds).length ? `<div class="plan-line">오늘 계획 ${planOf(ds).map(n => `<span class="${didOn(ds, n) ? 'ok' : ''}">${didOn(ds, n) ? '✓ ' : ''}${esc(n)}</span>`).join('')}</div>` : ''}
         <div><b class="num">${rec.steps != null ? fmtInt(rec.steps) : '–'}</b><span>걸음</span></div>
         ${(() => { const k = mineOf(ds).reduce((a, x) => a + (x.kcal || 0), 0); return k ? `<div><b class="num">${fmtInt(k)}</b><span>운동 kcal</span></div>` : ''; })()}
       </div>
@@ -803,15 +864,535 @@ function bindChart() {
   svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hide(); });
 }
 
-// ── 헬스 (틀만) ──
+// ── 운동 그림: 직접 그린 막대 인형이 시작 자세(A) ↔ 끝 자세(B)를 천천히 오가는 애니메이션 ──
+// 각도는 도(°): 0 = 오른쪽(앞), 90 = 아래, -90 = 위, 180 = 뒤. 사람은 오른쪽을 보고 있음 (옆에서 본 모습).
+// front: true 는 앞에서 본 모습 (오른팔·오른다리 각도만 적으면 왼쪽은 거울처럼).
+// 키 순서: hx,hy 엉덩이 위치 / t 몸통 / a1,f1 가까운 팔(위팔·아래팔) / a2,f2 먼 팔 / l1,s1 가까운 다리(허벅지·정강이) / l2,s2 먼 다리
+const D2R = Math.PI / 180;
+const pt = (p, ang, len) => [p[0] + Math.cos(ang * D2R) * len, p[1] + Math.sin(ang * D2R) * len];
+const SEAT = '<rect x="26" y="72" width="30" height="5" rx="2.5"/><line x1="41" y1="77" x2="41" y2="94"/>';
+const SEAT_BACK = SEAT + '<rect x="24" y="34" width="6" height="40" rx="3"/>';
+const FLOOR = '<line x1="4" y1="95" x2="96" y2="95"/>';
+const FIG = {
+  '케이블 시티드 로우': {
+    A: { hx: 36, hy: 74, t: -75, a1: -5, f1: 0, l1: -8, s1: 12 },
+    B: { hx: 36, hy: 74, t: -95, a1: 125, f1: -10, l1: -8, s1: 12 },
+    props: FLOOR + '<rect x="16" y="76" width="34" height="4" rx="2"/><line x1="81" y1="62" x2="81" y2="84"/><line x1="92" y1="20" x2="92" y2="95"/><circle cx="88" cy="47" r="3"/>',
+    att: ['cable:88,47', 'handle'],
+  },
+  '머신 체스트 프레스': {
+    A: { hx: 40, hy: 70, t: -90, a1: 160, f1: 0, l1: 0, s1: 90 },
+    B: { hx: 40, hy: 70, t: -90, a1: 0, f1: 0, l1: 0, s1: 90 },
+    props: FLOOR + SEAT_BACK.replace(/x="26"/, 'x="28"'), att: ['handle'],
+  },
+  '랫풀다운': {
+    A: { hx: 46, hy: 70, t: -92, a1: -80, f1: -84, l1: 0, s1: 90 },
+    B: { hx: 46, hy: 70, t: -97, a1: 100, f1: -75, l1: 0, s1: 90 },
+    props: FLOOR + SEAT + '<circle cx="62" cy="63" r="4"/><circle cx="50" cy="3" r="3"/>', att: ['cable:50,3', 'bar'],
+  },
+  '머신 랫풀다운': {
+    A: { hx: 46, hy: 70, t: -92, a1: -80, f1: -84, l1: 0, s1: 90 },
+    B: { hx: 46, hy: 70, t: -97, a1: 100, f1: -75, l1: 0, s1: 90 },
+    props: FLOOR + SEAT + '<circle cx="62" cy="63" r="4"/><line x1="80" y1="4" x2="80" y2="95"/>', att: ['handle'],
+  },
+  '원암 덤벨 로우': {
+    A: { hx: 34, hy: 52, t: -12, a1: 90, f1: 90, a2: 95, f2: 90, l1: 95, s1: 85, l2: 92, s2: 180 },
+    B: { hx: 34, hy: 52, t: -12, a1: -165, f1: 95, a2: 95, f2: 90, l1: 95, s1: 85, l2: 92, s2: 180 },
+    props: FLOOR + '<rect x="14" y="73" width="58" height="5" rx="2.5"/><line x1="20" y1="78" x2="20" y2="95"/><line x1="66" y1="78" x2="66" y2="95"/>', att: ['db1'],
+  },
+  '덤벨 로우': {
+    A: { hx: 42, hy: 54, t: -25, a1: 90, f1: 90, l1: 100, s1: 80 },
+    B: { hx: 42, hy: 54, t: -25, a1: -160, f1: 95, l1: 100, s1: 80 },
+    props: FLOOR, att: ['db'],
+  },
+  '백 익스텐션': {
+    A: { hx: 54, hy: 50, t: 95, a1: -75, f1: 130, l1: 140, s1: 140 },
+    B: { hx: 54, hy: 50, t: -40, a1: 120, f1: -10, l1: 140, s1: 140 },
+    props: FLOOR + '<line x1="12" y1="88" x2="60" y2="56"/><line x1="30" y1="76" x2="30" y2="95"/><circle cx="58" cy="54" r="4"/><circle cx="20" cy="80" r="3"/>',
+  },
+  '머신 숄더 프레스': {
+    A: { hx: 42, hy: 70, t: -90, a1: 75, f1: -85, l1: 0, s1: 90 },
+    B: { hx: 42, hy: 70, t: -90, a1: -80, f1: -88, l1: 0, s1: 90 },
+    props: FLOOR + SEAT_BACK, att: ['handle'],
+  },
+  '시티드 덤벨 숄더 프레스': {
+    A: { hx: 42, hy: 70, t: -90, a1: 75, f1: -85, l1: 0, s1: 90 },
+    B: { hx: 42, hy: 70, t: -90, a1: -80, f1: -88, l1: 0, s1: 90 },
+    props: FLOOR + SEAT_BACK, att: ['db'],
+  },
+  '덤벨 레터럴 레이즈': {
+    A: { front: 1, hx: 50, hy: 52, a: 82, f: 85, l: 92, s: 90 },
+    B: { front: 1, hx: 50, hy: 52, a: 5, f: 5, l: 92, s: 90 },
+    props: FLOOR, att: ['dbf'],
+  },
+  '케이블 익스터널 로테이션': {
+    A: { front: 1, hx: 50, hy: 52, a: 90, f: 175, a2: 92, f2: 90, l: 92, s: 90 },
+    B: { front: 1, hx: 50, hy: 52, a: 90, f: 5, a2: 92, f2: 90, l: 92, s: 90 },
+    props: FLOOR + '<line x1="6" y1="10" x2="6" y2="95"/><circle cx="10" cy="40" r="3"/>', att: ['cable:10,40', 'handle'],
+  },
+  '케이블 바이셉 컬': {
+    A: { hx: 50, hy: 52, t: -90, a1: 92, f1: 92, l1: 90, s1: 90 },
+    B: { hx: 50, hy: 52, t: -90, a1: 95, f1: -60, l1: 90, s1: 90 },
+    props: FLOOR + '<line x1="88" y1="20" x2="88" y2="95"/><circle cx="84" cy="88" r="3"/>', att: ['cable:84,88', 'bar'],
+  },
+  '덤벨 해머 컬': {
+    A: { hx: 50, hy: 52, t: -90, a1: 92, f1: 92, l1: 90, s1: 90 },
+    B: { hx: 50, hy: 52, t: -90, a1: 95, f1: -60, l1: 90, s1: 90 },
+    props: FLOOR, att: ['db'],
+  },
+  '덤벨 트라이셉스 익스텐션': {
+    A: { hx: 46, hy: 70, t: -90, a1: -95, f1: 125, l1: 0, s1: 90 },
+    B: { hx: 46, hy: 70, t: -90, a1: -95, f1: -92, l1: 0, s1: 90 },
+    props: FLOOR + SEAT, att: ['db1'],
+  },
+  '덤벨 트라이셉 킥백': {
+    A: { hx: 34, hy: 52, t: -12, a1: 172, f1: 90, a2: 95, f2: 90, l1: 95, s1: 85, l2: 92, s2: 180 },
+    B: { hx: 34, hy: 52, t: -12, a1: 172, f1: 175, a2: 95, f2: 90, l1: 95, s1: 85, l2: 92, s2: 180 },
+    props: FLOOR + '<rect x="14" y="73" width="58" height="5" rx="2.5"/><line x1="20" y1="78" x2="20" y2="95"/><line x1="66" y1="78" x2="66" y2="95"/>', att: ['db1'],
+  },
+  '케이블 트라이셉 푸시다운': {
+    A: { hx: 50, hy: 52, t: -86, a1: 95, f1: -40, l1: 92, s1: 90 },
+    B: { hx: 50, hy: 52, t: -86, a1: 95, f1: 92, l1: 92, s1: 90 },
+    props: FLOOR + '<line x1="84" y1="2" x2="84" y2="95"/><circle cx="80" cy="6" r="3"/>', att: ['cable:80,6', 'bar'],
+  },
+  '스미스머신 스쿼트': {
+    A: { hx: 50, hy: 52, t: -90, a1: 135, f1: -50, l1: 90, s1: 90 },
+    B: { hx: 42, hy: 72, t: -62, a1: 163, f1: -22, l1: 20, s1: 128 },
+    props: FLOOR + '<line x1="76" y1="2" x2="76" y2="95"/>', att: ['smith'],
+  },
+  '머신 레그 프레스': {
+    A: { hx: 36, hy: 70, t: -140, a1: 60, f1: 10, l1: -55, s1: 15 },
+    B: { hx: 36, hy: 70, t: -140, a1: 60, f1: 10, l1: -25, s1: -25 },
+    props: FLOOR + '<polygon points="10,48 16,44 40,72 40,77 30,77" /><line x1="34" y1="77" x2="34" y2="95"/>', att: ['plat'],
+  },
+  '시티드 레그 컬': {
+    A: { hx: 40, hy: 66, t: -98, a1: 80, f1: 0, l1: 0, s1: 3 },
+    B: { hx: 40, hy: 66, t: -98, a1: 80, f1: 0, l1: 0, s1: 105 },
+    props: FLOOR + '<rect x="24" y="68" width="34" height="5" rx="2.5"/><rect x="22" y="30" width="6" height="40" rx="3"/><line x1="40" y1="73" x2="40" y2="95"/><circle cx="56" cy="60" r="4"/>', att: ['pad'],
+  },
+  '덤벨 스티프 레그 데드리프트': {
+    A: { hx: 50, hy: 52, t: -90, a1: 92, f1: 90, l1: 92, s1: 88 },
+    B: { hx: 44, hy: 53, t: -12, a1: 92, f1: 90, l1: 82, s1: 98 },
+    props: FLOOR, att: ['db'],
+  },
+  '힙 쓰러스트': {
+    A: { hx: 48, hy: 84, t: -145, a1: 35, f1: 35, l1: -25, s1: 55 },
+    B: { hx: 54, hy: 66, t: 178, a1: -2, f1: -2, l1: 10, s1: 78 },
+    props: FLOOR + '<rect x="2" y="66" width="26" height="5" rx="2.5"/><line x1="14" y1="71" x2="14" y2="95"/>', att: ['barhip'],
+  },
+  '플레이트 힙 쓰러스트': {
+    A: { hx: 48, hy: 84, t: -145, a1: 35, f1: 35, l1: -25, s1: 55 },
+    B: { hx: 54, hy: 66, t: 178, a1: -2, f1: -2, l1: 10, s1: 78 },
+    props: FLOOR + '<rect x="2" y="66" width="26" height="5" rx="2.5"/><line x1="14" y1="71" x2="14" y2="95"/>', att: ['plate'],
+  },
+  '힙 어브덕션': {
+    A: { front: 1, hx: 50, hy: 56, a: 100, f: 90, l: 94, s: 90 },
+    B: { front: 1, hx: 50, hy: 56, a: 100, f: 90, l: 62, s: 92 },
+    props: '<rect x="34" y="57" width="32" height="5" rx="2.5"/><rect x="42" y="18" width="16" height="40" rx="4" opacity=".5"/>', att: ['padOut'],
+  },
+  '힙 어덕션': {
+    A: { front: 1, hx: 50, hy: 56, a: 100, f: 90, l: 62, s: 92 },
+    B: { front: 1, hx: 50, hy: 56, a: 100, f: 90, l: 94, s: 90 },
+    props: '<rect x="34" y="57" width="32" height="5" rx="2.5"/><rect x="42" y="18" width="16" height="40" rx="4" opacity=".5"/>', att: ['padIn'],
+  },
+  '일립티컬 머신': {
+    A: { hx: 48, hy: 46, t: -88, a1: 60, f1: -15, a2: 80, f2: 0, l1: 70, s1: 110, l2: 105, s2: 82 },
+    B: { hx: 48, hy: 46, t: -88, a1: 80, f1: 0, a2: 60, f2: -15, l1: 105, s1: 82, l2: 70, s2: 110 },
+    props: '<line x1="20" y1="94" x2="84" y2="94"/><line x1="80" y1="94" x2="72" y2="20"/><line x1="30" y1="90" x2="66" y2="90"/>', att: ['handle'], period: 1600,
+  },
+};
+const FIG_DEFAULT = {
+  A: { hx: 50, hy: 52, t: -90, a1: 95, f1: 92, a2: 85, f2: 88, l1: 92, s1: 88, l2: 88, s2: 92 },
+  B: { hx: 50, hy: 51, t: -90, a1: 70, f1: 40, a2: 110, f2: 140, l1: 88, s1: 92, l2: 92, s2: 88 },
+  props: FLOOR,
+};
+
+const lerpPose = (A, B, e) => { const o = {}; for (const k of Object.keys(A)) o[k] = typeof A[k] === 'number' && typeof B[k] === 'number' ? A[k] + (B[k] - A[k]) * e : A[k]; return o; };
+const pl = pts => 'M' + pts.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join('L');
+
+function figMarkup(p, def) {
+  let far = '', body = '', att = '';
+  let hands, knees, feet, sho, hip = [p.hx, p.hy], s1 = p.s1;
+  if (p.front) {
+    const shY = p.hy - 30, sR = [p.hx + 8, shY], sL = [p.hx - 8, shY], hd = [p.hx, shY - 9];
+    const aL = p.a2 ?? 180 - p.a, fL = p.f2 ?? 180 - p.f, lL = p.l2 ?? 180 - p.l, sLg = p.s2 ?? 180 - p.s;
+    const eR = pt(sR, p.a, 16), hR = pt(eR, p.f, 15), eL = pt(sL, aL, 16), hL = pt(eL, fL, 15);
+    const hipR = [p.hx + 5, p.hy], hipL = [p.hx - 5, p.hy];
+    const kR = pt(hipR, p.l, 21), ftR = pt(kR, p.s, 21), kL = pt(hipL, lL, 21), ftL = pt(kL, sLg, 21);
+    body = `<path d="${pl([sL, sR])}M${p.hx},${shY}L${p.hx},${p.hy}${pl([hipL, hipR])}${pl([sR, eR, hR])}${pl([sL, eL, hL])}${pl([hipR, kR, ftR])}${pl([hipL, kL, ftL])}"/><circle class="hd" cx="${hd[0]}" cy="${hd[1]}" r="6"/>`;
+    hands = [hR, hL]; knees = [kR, kL]; feet = [ftR, ftL]; sho = [p.hx, shY];
+  } else {
+    sho = pt(hip, p.t, 30);
+    const hd = pt(sho, p.t, 9);
+    const a2 = p.a2 ?? p.a1, f2 = p.f2 ?? p.f1, l2 = p.l2 ?? p.l1, s2 = p.s2 ?? p.s1;
+    const e1 = pt(sho, p.a1, 16), h1 = pt(e1, p.f1, 15), e2 = pt(sho, a2, 16), h2 = pt(e2, f2, 15);
+    const k1 = pt(hip, p.l1, 21), ft1 = pt(k1, p.s1, 21), k2 = pt(hip, l2, 21), ft2 = pt(k2, s2, 21);
+    far = `<path d="${pl([sho, e2, h2])}${pl([hip, k2, ft2])}"/>`;
+    body = `<path d="${pl([hip, sho])}${pl([sho, e1, h1])}${pl([hip, k1, ft1])}"/><circle class="hd" cx="${hd[0].toFixed(1)}" cy="${hd[1].toFixed(1)}" r="6"/>`;
+    hands = [h1, h2]; knees = [k1, k2]; feet = [ft1, ft2];
+  }
+  const dumbbell = (h, ang) => {
+    const a = pt(h, ang, 5), b = pt(h, ang + 180, 5);
+    return `<path d="${pl([a, b])}" stroke-width="2.5"/><path d="${pl([pt(a, ang + 90, 3.5), pt(a, ang - 90, 3.5)])}${pl([pt(b, ang + 90, 3.5), pt(b, ang - 90, 3.5)])}" stroke-width="4"/>`;
+  };
+  for (const a of def.att || []) {
+    if (a.startsWith('cable:')) { const [x, y] = a.slice(6).split(',').map(Number); att += `<path class="cb" d="M${x},${y}L${hands[0][0].toFixed(1)},${hands[0][1].toFixed(1)}"/>`; }
+    else if (a === 'handle') att += hands.map(h => `<circle cx="${h[0].toFixed(1)}" cy="${h[1].toFixed(1)}" r="2.6"/>`).join('');
+    else if (a === 'bar') att += `<path d="M${(hands[0][0] - 10).toFixed(1)},${hands[0][1].toFixed(1)}h20" stroke-width="2.5"/>`;
+    else if (a === 'db') att += dumbbell(hands[0], 90) + (p.front ? dumbbell(hands[1], 90) : '');
+    else if (a === 'db1') att += dumbbell(hands[0], 90);
+    else if (a === 'dbf') att += hands.map(h => dumbbell(h, 90)).join('');
+    else if (a === 'smith') att += `<circle cx="${sho[0].toFixed(1)}" cy="${(sho[1] - 1).toFixed(1)}" r="4"/>`;
+    else if (a === 'barhip') att += `<circle cx="${hip[0].toFixed(1)}" cy="${(hip[1] - 5).toFixed(1)}" r="4.5"/>`;
+    else if (a === 'plate') att += `<circle class="pl" cx="${hip[0].toFixed(1)}" cy="${(hip[1] - 7).toFixed(1)}" r="8"/>`;
+    else if (a === 'pad') { const c = pt(knees[0], s1, 17); att += `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4"/>`; }
+    else if (a === 'plat') { const f = feet[0]; att += `<path d="${pl([pt(f, p.s1 - 90, 11), pt(f, p.s1 + 90, 11)])}" stroke-width="3"/>`; }
+    else if (a === 'padOut' || a === 'padIn') att += knees.map((k, i) => { const dx = (i === 0 ? 1 : -1) * (a === 'padOut' ? 5 : -5); return `<circle cx="${(k[0] + dx).toFixed(1)}" cy="${k[1].toFixed(1)}" r="3.5"/>`; }).join('');
+  }
+  return `<g class="far">${far}</g><g class="bd">${body}</g><g class="at">${att}</g>`;
+}
+const figDef = name => FIG[name] || FIG_DEFAULT;
+const figSvg = (name, size = 56) => `<svg class="fig" data-fig="${esc(name)}" data-off="${Math.random().toFixed(2)}" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true"><g class="pr">${figDef(name).props || ''}</g><g class="dyn">${figMarkup(figDef(name).A, figDef(name))}</g></svg>`;
+// 화면에 있는 그림만 움직임 (초당 30번, 움직임 줄이기 설정이면 멈춤)
+let figLast = 0;
+function figLoop(now) {
+  requestAnimationFrame(figLoop);
+  if (now - figLast < 33) return;
+  figLast = now;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for (const el of document.querySelectorAll('svg.fig')) {
+    const r = el.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight || !r.width) continue;
+    const def = figDef(el.dataset.fig), period = def.period || 2600;
+    const ph = (now / period + +el.dataset.off) % 1;
+    const e = reduce ? 0.5 : (1 - Math.cos(ph * 2 * Math.PI)) / 2;
+    el.lastChild.innerHTML = figMarkup(lerpPose(def.A, def.B, e), def);
+  }
+}
+requestAnimationFrame(figLoop);
+
+// ── 헬스 ──
+// gym = { plan: { 월요일날짜: { 0~6(월~일): [운동 이름] } }, routines: [{ id, name, ex: [운동] }],
+//         sessions: { 날짜: { start, end?, min?, kcal?, items: [{ ex, sets: [{ w, r, m, done }] }] } }, custom: [{ name }] }
+const EX_GROUPS = [
+  ['등', ['케이블 시티드 로우', '랫풀다운', '머신 랫풀다운', '원암 덤벨 로우', '덤벨 로우', '백 익스텐션']],
+  ['가슴', ['머신 체스트 프레스']],
+  ['어깨', ['머신 숄더 프레스', '시티드 덤벨 숄더 프레스', '덤벨 레터럴 레이즈', '케이블 익스터널 로테이션']],
+  ['팔', ['케이블 바이셉 컬', '덤벨 해머 컬', '덤벨 트라이셉스 익스텐션', '덤벨 트라이셉 킥백', '케이블 트라이셉 푸시다운']],
+  ['하체·엉덩이', ['스미스머신 스쿼트', '머신 레그 프레스', '시티드 레그 컬', '덤벨 스티프 레그 데드리프트', '힙 쓰러스트', '플레이트 힙 쓰러스트', '힙 어브덕션', '힙 어덕션']],
+  ['유산소', ['일립티컬 머신']],
+];
+const G = () => {
+  const g = (S.data.gym = S.data.gym || {});
+  g.plan = g.plan || {}; g.routines = g.routines || []; g.sessions = g.sessions || {}; g.custom = g.custom || [];
+  return g;
+};
+const groupOf = n => (EX_GROUPS.find(([, l]) => l.includes(n)) || ['기타'])[0];
+const isCardio = n => groupOf(n) === '유산소';
+const exGroups = () => [...EX_GROUPS, ...(G().custom.length ? [['내가 추가', G().custom.map(c => c.name)]] : [])];
+const ytUrl = n => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(n + ' 자세');
+
+// 주간 계획
+const mondayOf = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; };
+let gymWeek = mondayOf(new Date());
+let planDay = null;
+const planOf = ds => { const d = parseYmd(ds); return ((G().plan[ymd(mondayOf(d))] || {})[(d.getDay() + 6) % 7]) || []; };
+const didOn = (ds, n) => mineOf(ds).some(x => x.name === n) || (n === '헬스' && !!(G().sessions[ds] || {}).end);
+const shortName = n => ({ 필라테스: '필라', 홈트레이닝: '홈트' }[n] || n.slice(0, 3));
+const planChoices = () => [...new Set([...QUICK, ...Object.values(S.data.mine || {}).flat().map(x => x.name)])].slice(0, 12);
+
+function planCard() {
+  const wk = ymd(gymWeek), plan = G().plan[wk] || {}, today = todayStr();
+  let total = 0, done = 0;
+  const cells = WD.map((w, i) => {
+    const d = new Date(gymWeek.getFullYear(), gymWeek.getMonth(), gymWeek.getDate() + i), ds = ymd(d), items = plan[i] || [];
+    const ok = items.filter(n => didOn(ds, n)).length;
+    total += items.length; done += ok;
+    return `<button class="pd ${items.length && ok === items.length ? 'done' : ''} ${ds === today ? 'today' : ''} ${planDay === ds ? 'sel' : ''}" data-plan-day="${ds}">
+      <span class="pd-w">${w}</span><span class="pd-d num">${d.getDate()}</span>
+      ${items.length ? items.map(n => `<span class="pd-i ${didOn(ds, n) ? 'ok' : ''}">${esc(shortName(n))}</span>`).join('') : '<span class="pd-i none">·</span>'}
+    </button>`;
+  }).join('');
+  const end = new Date(gymWeek.getFullYear(), gymWeek.getMonth(), gymWeek.getDate() + 6);
+  const prevWk = ymd(new Date(gymWeek.getFullYear(), gymWeek.getMonth(), gymWeek.getDate() - 7));
+  const prevHas = Object.values(G().plan[prevWk] || {}).some(l => l.length);
+  const editing = planDay && planDay >= wk && planDay <= ymd(end);
+  const di = editing ? (parseYmd(planDay).getDay() + 6) % 7 : 0;
+  return `<div class="card">
+    <div class="month-head">
+      <div><h2>이번 주 계획</h2><span class="sub" style="font-size:13px">${gymWeek.getMonth() + 1}/${gymWeek.getDate()} – ${end.getMonth() + 1}/${end.getDate()}${total ? ` · <b style="color:var(--accent)">${done}/${total} 완료</b>` : ''}</span></div>
+      <div class="arrows"><button data-act="wk-prev" aria-label="지난주">${ARROW_L}</button><button data-act="wk-next" aria-label="다음 주">${ARROW_R}</button></div>
+    </div>
+    <div class="pweek">${cells}</div>
+    ${editing ? `<div class="pedit">
+      <p class="sub" style="margin:0 0 6px;font-size:13px">${longDate(planDay)}에 할 운동을 골라요</p>
+      <div class="chips">${planChoices().map(n => `<button class="chip pick ${(plan[di] || []).includes(n) ? 'on' : ''}" data-plan-toggle="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+      <div class="detail-foot"><span></span><button class="btn small ghost" data-act="plan-close">닫기</button></div>
+    </div>` : `<p class="sub" style="margin:8px 0 0;font-size:13px">요일을 눌러 계획을 넣어요. 그날 같은 운동을 적으면 자동으로 체크돼요.</p>`}
+    ${!total && prevHas ? `<button class="btn ghost small more" data-act="plan-copy">지난주 계획 그대로 가져오기</button>` : ''}
+  </div>`;
+}
+
+// 세트 기록
+function lastSetsFor(name, before) {
+  const days = Object.keys(G().sessions).filter(d => d < before).sort().reverse();
+  for (const d of days) {
+    const it = (G().sessions[d].items || []).find(i => i.ex === name);
+    if (it && it.sets.length) return it.sets.map(s => ({ w: s.w || '', r: s.r || '', m: s.m || '', done: false }));
+  }
+  return isCardio(name) ? [{ m: '', done: false }] : [0, 1, 2].map(() => ({ w: '', r: '', done: false }));
+}
+const lastText = (name, before) => {
+  const days = Object.keys(G().sessions).filter(d => d < before).sort().reverse();
+  for (const d of days) {
+    const it = (G().sessions[d].items || []).find(i => i.ex === name);
+    if (it) { const s = it.sets.filter(x => x.done); if (s.length) return `지난번 ${shortDate(d)} · ` + (isCardio(name) ? `${s[0].m}분` : s.map(x => `${x.w}×${x.r}`).join(', ')); }
+  }
+  return '';
+};
+let pickerOpen = false;
+
+function sessionCard() {
+  const ds = todayStr(), s = G().sessions[ds];
+  if (!s) return `<div class="card">
+    <h2>오늘 헬스</h2>
+    ${G().routines.length ? `<p class="sub" style="margin:0 0 8px;font-size:13px">루틴을 고르면 운동이 한 번에 들어가요</p>
+      <div class="chips">${G().routines.map(r => `<button class="chip pick" data-start="${esc(r.id)}">${esc(r.name)} · ${r.ex.length}개</button>`).join('')}</div>` : ''}
+    <button class="btn" style="width:100%;margin-top:12px" data-start="">${G().routines.length ? '빈 운동으로 시작' : '헬스 시작'}</button>
+  </div>`;
+  if (s.end) {
+    const sets = s.items.reduce((a, i) => a + i.sets.filter(x => x.done).length, 0);
+    return `<div class="card">
+      <div class="wo-head"><h3>오늘 헬스 끝! 🎉</h3><button class="link" data-act="gym-reopen">다시 열기</button></div>
+      <p class="sub" style="margin:4px 0 8px">${s.min || '–'}분${s.kcal ? ` · ${fmtInt(s.kcal)}kcal` : ''} · 운동 ${s.items.length}개 · 세트 ${sets}개</p>
+      <ul class="wo">${s.items.map(i => `<li>${figSvg(i.ex, 40)}<span class="wo-name">${esc(i.ex)}<span class="wo-note">${isCardio(i.ex) ? i.sets.filter(x => x.done).map(x => `${x.m}분`).join(', ') : i.sets.filter(x => x.done).map(x => `${x.w}kg×${x.r}`).join(', ')}</span></span></li>`).join('')}</ul>
+    </div>`;
+  }
+  const items = s.items.map((it, i) => {
+    const cardio = isCardio(it.ex), hint = lastText(it.ex, ds);
+    return `<div class="gx">
+      <div class="gx-head">${figSvg(it.ex, 64)}
+        <div class="gx-name"><b>${esc(it.ex)}</b><span class="gx-grp">${groupOf(it.ex)}</span>
+          ${hint ? `<span class="gx-last">${esc(hint)}</span>` : ''}
+          <a class="gx-yt" href="${ytUrl(it.ex)}" target="_blank" rel="noopener">자세 영상 ↗</a></div>
+        <button class="x" data-gx-del="${i}" aria-label="${esc(it.ex)} 빼기">${X_ICON}</button></div>
+      ${it.sets.map((st, j) => `<div class="gs ${st.done ? 'done' : ''}"><span class="gs-n num">${j + 1}</span>
+        ${cardio ? `<input class="num" data-gs="${i}:${j}:m" value="${esc(st.m)}" inputmode="numeric" placeholder="0"><span class="gs-u">분</span>`
+          : `<input class="num" data-gs="${i}:${j}:w" value="${esc(st.w)}" inputmode="decimal" placeholder="0"><span class="gs-u">kg ×</span><input class="num" data-gs="${i}:${j}:r" value="${esc(st.r)}" inputmode="numeric" placeholder="0"><span class="gs-u">회</span>`}
+        <button class="gs-ok" data-gs-ok="${i}:${j}" aria-label="${j + 1}세트 완료">✓</button></div>`).join('')}
+      <div class="gx-foot"><button class="link" data-gs-add="${i}">＋ 세트</button>${it.sets.length > 1 ? `<button class="link" data-gs-rm="${i}">− 세트</button>` : ''}</div>
+    </div>`;
+  }).join('');
+  return `<div class="card">
+    <div class="wo-head"><h3>오늘 헬스 <span class="sub num" id="gym-elapsed" style="font-weight:500"></span></h3><button class="link" data-act="gym-cancel">기록 지우기</button></div>
+    ${items || '<p class="sub wo-empty">아래에서 운동을 추가해요.</p>'}
+    <button class="btn ghost" style="width:100%;margin-top:10px" data-act="picker">＋ 운동 추가</button>
+    ${pickerOpen ? pickerHtml() : ''}
+    ${s.items.length ? `<div class="gym-end">
+      <button class="btn ghost small" data-act="routine-save">루틴으로 저장</button>
+      <button class="btn" data-act="gym-finish">운동 끝내기</button></div>` : ''}
+  </div>`;
+}
+
+function pickerHtml() {
+  const have = new Set((G().sessions[todayStr()] || { items: [] }).items.map(i => i.ex));
+  return `<div class="picker" id="picker">
+    <div class="fld" style="margin:10px 0 6px"><input id="pk-q" placeholder="운동 이름 검색" autocomplete="off"></div>
+    ${exGroups().map(([g, list]) => `<div class="pk-g" data-g><h4>${g}</h4>
+      ${list.map(n => `<button class="pk ${have.has(n) ? 'have' : ''}" data-pick-ex="${esc(n)}">${figSvg(n, 44)}<span>${esc(n)}</span><b>${have.has(n) ? '추가됨' : '＋'}</b></button>`).join('')}</div>`).join('')}
+    <div class="detail-foot"><button class="link" data-act="ex-custom">목록에 없는 운동 직접 추가</button><button class="btn small ghost" data-act="picker">닫기</button></div>
+  </div>`;
+}
+
+function routinesCard() {
+  if (!G().routines.length) return '';
+  return `<div class="card"><h2>내 루틴</h2><ul class="wo">${G().routines.map(r => `<li><span class="wo-name">${esc(r.name)}<span class="wo-note">${r.ex.map(esc).join(' · ')}</span></span>
+    <button class="x" data-del-routine="${esc(r.id)}" aria-label="${esc(r.name)} 루틴 지우기">${X_ICON}</button></li>`).join('')}</ul></div>`;
+}
+
+function statsCard() {
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+  const inMonth = ds => { const d = parseYmd(ds); return d.getFullYear() === y && d.getMonth() === m; };
+  const days = new Set([...Object.keys(S.data.mine || {}).filter(inMonth).filter(d => mineOf(d).length), ...Object.keys(G().sessions).filter(inMonth)]);
+  const count = {};
+  for (const d of Object.keys(S.data.mine || {}).filter(inMonth)) for (const x of mineOf(d)) count[x.name] = (count[x.name] || 0) + 1;
+  const top = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
+  // 운동별 최고 무게와 지난번 무게
+  const best = {};
+  for (const d of Object.keys(G().sessions).sort()) for (const it of G().sessions[d].items || []) {
+    if (isCardio(it.ex)) continue;
+    const ws = it.sets.filter(s => s.done && +s.w > 0).map(s => +s.w);
+    if (!ws.length) continue;
+    const b = best[it.ex] || { max: 0 };
+    best[it.ex] = { max: Math.max(b.max, ...ws), last: Math.max(...ws), date: d };
+  }
+  const rows = Object.entries(best).sort((a, b) => b[1].date.localeCompare(a[1].date)).slice(0, 8);
+  return `<div class="card">
+    <h2>${m + 1}월 기록</h2>
+    <div class="tiles">
+      <div class="tile"><b class="num">${days.size}<small>일</small></b><span>운동한 날</span></div>
+      <div class="tile"><b style="font-size:17px">${top ? esc(top[0]) : '–'}</b><span>가장 많이 한 운동${top ? ` · ${top[1]}번` : ''}</span></div>
+    </div>
+    ${rows.length ? `<h3 style="font-size:15px;font-weight:800;margin:14px 0 4px">운동별 최고 무게</h3>
+    <ul class="wo">${rows.map(([n, b]) => `<li>${figSvg(n, 36)}<span class="wo-name">${esc(n)}<span class="wo-note">지난번 ${f1(b.last).replace('.0', '')}kg · ${shortDate(b.date)}</span></span><b class="num">${f1(b.max).replace('.0', '')}<small class="sub"> kg</small></b></li>`).join('')}</ul>` : ''}
+  </div>`;
+}
+
 function renderGym() {
-  $('#v-gym').innerHTML = `
-    <p class="sub" style="margin:0 0 12px">헬스 탭은 아직 구상 중이에요. 아래는 넣을 수 있는 것들의 초안이에요.</p>
-    <div class="card draft"><span class="tag">초안 1</span><h2>오늘 운동</h2><p class="sub" style="margin:0">루틴을 고르면 운동 목록이 나오고, 세트마다 무게 × 횟수를 체크</p>
-      <ul><li>지난번 무게·횟수를 미리 채워 줌</li><li>세트 사이 휴식 타이머</li></ul></div>
-    <div class="card draft"><span class="tag">초안 2</span><h2>내 루틴</h2><p class="sub" style="margin:0">예: 월 하체 · 수 상체 · 금 전신, 루틴마다 운동 목록</p></div>
-    <div class="card draft"><span class="tag">초안 3</span><h2>운동별 기록</h2><p class="sub" style="margin:0">스쿼트·데드리프트 등 운동마다 최고 무게와 변화 그래프</p></div>
-    <div class="card draft"><span class="tag">초안 4</span><h2>달력과 연결</h2><p class="sub" style="margin:0">헬스 한 날은 달력에 표시, 그날 한 운동을 눌러서 보기</p></div>`;
+  $('#v-gym').innerHTML = planCard() + sessionCard() + routinesCard() + statsCard();
+  tickRest();
+}
+
+// 저장: 세트 기록은 그날 것 하나만, 계획·루틴은 따로
+let gymSaveT;
+function saveSession(ds, now) {
+  S.pending = { ...(S.pending || {}), gymSession: { date: ds, value: G().sessions[ds] || null } };
+  save();
+  clearTimeout(gymSaveT);
+  gymSaveT = setTimeout(() => post({}).catch(() => toast('인터넷 연결되면 저장돼요')), now ? 0 : 800);
+}
+const saveMeta = () => post({ gymMeta: { plan: G().plan, routines: G().routines, custom: G().custom } }).catch(() => toast('인터넷 연결되면 저장돼요'));
+
+// 휴식 타이머 (1분)
+let restEnd = 0, audioCtx = null;
+function startRest(sec = 60) {
+  restEnd = Date.now() + sec * 1000;
+  try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch {}
+  tickRest();
+}
+function beep() {
+  try {
+    for (const o of [0, 0.25, 0.5]) {
+      const os = audioCtx.createOscillator(), g = audioCtx.createGain();
+      os.frequency.value = 880; g.gain.value = 0.18; os.connect(g); g.connect(audioCtx.destination);
+      os.start(audioCtx.currentTime + o); os.stop(audioCtx.currentTime + o + 0.15);
+    }
+  } catch {}
+  try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch {}
+}
+function tickRest() {
+  const bar = $('#rest');
+  if (restEnd && Date.now() >= restEnd) { restEnd = 0; beep(); toast('휴식 끝! 다음 세트 💪'); }
+  bar.hidden = !restEnd;
+  if (restEnd) {
+    const left = Math.max(0, restEnd - Date.now()), s = Math.ceil(left / 1000);
+    bar.querySelector('b').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    bar.querySelector('s').style.width = Math.min(100, left / 600) + '%';
+  }
+  const el = $('#gym-elapsed'), ses = G().sessions[todayStr()];
+  if (el && ses && !ses.end) el.textContent = `· ${Math.max(1, Math.round((Date.now() - ses.start) / 60000))}분째`;
+}
+setInterval(tickRest, 250);
+
+function gymInput(e) {
+  const k = e.target.dataset && e.target.dataset.gs;
+  if (k) {
+    const [i, j, f] = k.split(':'), s = G().sessions[todayStr()];
+    if (!s || !s.items[i]) return;
+    s.items[i].sets[j][f] = e.target.value.replace(',', '.').trim();
+    saveSession(todayStr());
+  }
+  if (e.target.id === 'pk-q') {
+    const q = e.target.value.trim().replace(/\s/g, '');
+    document.querySelectorAll('.pk').forEach(b => (b.hidden = q && !b.textContent.replace(/\s/g, '').includes(q)));
+    document.querySelectorAll('.pk-g').forEach(g => (g.hidden = ![...g.querySelectorAll('.pk')].some(b => !b.hidden)));
+  }
+}
+document.addEventListener('input', gymInput);
+
+// 헬스 탭 누르기 (공통 누르기 처리에서 먼저 불림; 처리했으면 true)
+function gymClick(t) {
+  const today = todayStr(), a = t.dataset.act;
+  const s = G().sessions[today];
+  if (t.dataset.planDay) { planDay = planDay === t.dataset.planDay ? null : t.dataset.planDay; renderGym(); return true; }
+  if (t.dataset.planToggle) {
+    const d = parseYmd(planDay), wk = ymd(mondayOf(d)), di = (d.getDay() + 6) % 7, n = t.dataset.planToggle;
+    const p = (G().plan[wk] = G().plan[wk] || {}), l = p[di] || [];
+    p[di] = l.includes(n) ? l.filter(x => x !== n) : [...l, n];
+    save(); renderGym(); saveMeta(); return true;
+  }
+  if (a === 'plan-close') { planDay = null; renderGym(); return true; }
+  if (a === 'wk-prev' || a === 'wk-next') { gymWeek = new Date(gymWeek.getFullYear(), gymWeek.getMonth(), gymWeek.getDate() + (a === 'wk-next' ? 7 : -7)); planDay = null; renderGym(); return true; }
+  if (a === 'plan-copy') {
+    const prev = ymd(new Date(gymWeek.getFullYear(), gymWeek.getMonth(), gymWeek.getDate() - 7));
+    G().plan[ymd(gymWeek)] = JSON.parse(JSON.stringify(G().plan[prev] || {}));
+    save(); renderGym(); saveMeta(); toast('지난주 계획을 가져왔어요'); return true;
+  }
+  if (t.dataset.start !== undefined) {
+    const r = G().routines.find(x => x.id === t.dataset.start);
+    G().sessions[today] = { start: Date.now(), routine: r ? r.name : '', items: r ? r.ex.map(n => ({ ex: n, sets: lastSetsFor(n, today) })) : [] };
+    pickerOpen = !r; saveSession(today, true); renderGym(); return true;
+  }
+  if (!s) return false;
+  if (a === 'picker') { pickerOpen = !pickerOpen; renderGym(); if (pickerOpen) setTimeout(() => scrollToEl($('#picker'), 80), 30); return true; }
+  if (t.dataset.pickEx) {
+    const n = t.dataset.pickEx;
+    if (!s.items.some(i => i.ex === n)) { s.items.push({ ex: n, sets: lastSetsFor(n, today) }); saveSession(today); }
+    toast(`${n} 추가`); pickerOpen = false; renderGym(); return true;
+  }
+  if (a === 'ex-custom') {
+    const n = (prompt('운동 이름을 적어 주세요') || '').trim().slice(0, 30);
+    if (!n) return true;
+    if (!exGroups().some(([, l]) => l.includes(n))) { G().custom.push({ name: n }); saveMeta(); }
+    if (!s.items.some(i => i.ex === n)) s.items.push({ ex: n, sets: lastSetsFor(n, today) });
+    pickerOpen = false; saveSession(today); renderGym(); return true;
+  }
+  if (t.dataset.gxDel !== undefined) {
+    const it = s.items[+t.dataset.gxDel];
+    if (it && confirm(`${it.ex}을(를) 오늘 운동에서 뺄까요?`)) { s.items.splice(+t.dataset.gxDel, 1); saveSession(today); renderGym(); }
+    return true;
+  }
+  if (t.dataset.gsOk) {
+    const [i, j] = t.dataset.gsOk.split(':').map(Number), st = s.items[i].sets[j];
+    st.done = !st.done;
+    if (st.done) startRest(60);
+    saveSession(today); renderGym(); return true;
+  }
+  if (t.dataset.gsAdd !== undefined) { const it = s.items[+t.dataset.gsAdd], lst = it.sets.at(-1) || {}; it.sets.push({ w: lst.w || '', r: lst.r || '', m: lst.m || '', done: false }); saveSession(today); renderGym(); return true; }
+  if (t.dataset.gsRm !== undefined) { s.items[+t.dataset.gsRm].sets.pop(); saveSession(today); renderGym(); return true; }
+  if (a === 'routine-save') {
+    const n = (prompt('루틴 이름 (예: 하체, 상체)', s.routine || '') || '').trim().slice(0, 20);
+    if (!n) return true;
+    const ex = s.items.map(i => i.ex), old = G().routines.find(r => r.name === n);
+    if (old) old.ex = ex; else G().routines.push({ id: Date.now().toString(36), name: n, ex });
+    s.routine = n; save(); saveMeta(); saveSession(today); renderGym(); toast(`'${n}' 루틴을 저장했어요`); return true;
+  }
+  if (a === 'gym-finish') {
+    const guess = Math.min(300, Math.max(1, Math.round((Date.now() - s.start) / 60000)));
+    const mv = prompt('운동한 시간 (분)', guess);
+    if (mv == null) return true;
+    const kv = prompt('칼로리 (kcal, 모르면 비워 두세요)', s.kcal || '');
+    s.min = parseInt(String(mv).replace(/\D/g, ''), 10) || guess;
+    s.kcal = parseInt(String(kv || '').replace(/\D/g, ''), 10) || undefined;
+    s.end = Date.now(); restEnd = 0; pickerOpen = false;
+    // '오늘 한 운동'에 헬스로 넣기 (다시 끝내면 바꿔 씀)
+    const note = s.items.filter(i => i.sets.some(x => x.done)).map(i => isCardio(i.ex) ? `${i.ex} ${i.sets.filter(x => x.done).map(x => x.m + '분').join('')}` : `${i.ex} ${Math.max(0, ...i.sets.filter(x => x.done).map(x => +x.w || 0))}kg`).join(', ').slice(0, 300);
+    const list = mineOf(today).filter(x => !x.gym);
+    list.push({ id: 'gym' + today.replace(/-/g, ''), name: '헬스', min: s.min, kcal: s.kcal, note, gym: true });
+    S.data.mine = S.data.mine || {}; S.data.mine[today] = list;
+    S.pending = { ...(S.pending || {}), mine: { date: today, list } };
+    saveSession(today, true); renderGym(); toast('수고했어요! 오늘 한 운동에 넣었어요'); return true;
+  }
+  if (a === 'gym-reopen') { delete s.end; saveSession(today, true); renderGym(); return true; }
+  if (a === 'gym-cancel') {
+    if (!confirm('오늘 헬스 기록을 지울까요?')) return true;
+    delete G().sessions[today]; restEnd = 0; pickerOpen = false;
+    const list = mineOf(today).filter(x => !x.gym);
+    if (list.length) S.data.mine[today] = list; else delete S.data.mine[today];
+    S.pending = { ...(S.pending || {}), mine: { date: today, list } };
+    saveSession(today, true); renderGym(); return true;
+  }
+  return false;
+}
+function gymClickAny(t) {
+  if (t.dataset.delRoutine) {
+    const r = G().routines.find(x => x.id === t.dataset.delRoutine);
+    if (r && confirm(`'${r.name}' 루틴을 지울까요?`)) { G().routines = G().routines.filter(x => x !== r); save(); saveMeta(); renderGym(); }
+    return true;
+  }
+  if (t.dataset.act === 'rest-skip') { restEnd = 0; tickRest(); return true; }
+  if (t.dataset.act === 'rest-add') { restEnd += 30000; tickRest(); return true; }
+  return gymClick(t);
 }
 
 // ── 설정 창 ──
@@ -868,6 +1449,7 @@ const scrollToEl = (el, gap = 0) => { if (el) scrollTo({ top: el.getBoundingClie
 document.addEventListener('click', async ev => {
   const t = ev.target.closest('button'); if (!t) return;
   if (t.dataset.tab) { S.tab = t.dataset.tab; stopEditing(); render(); scrollTo(0, 0); return; }
+  if ((S.tab === 'gym' || /^rest-/.test(t.dataset.act || '') || t.dataset.delRoutine) && gymClickAny(t)) return;
   if (t.dataset.day) {
     sel = t.dataset.day; stopEditing(); save(); renderCal();
     if (sel === todayStr()) scrollTo({ top: 0, behavior: 'smooth' });
