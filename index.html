@@ -19,6 +19,7 @@
   --accent: #eb5a50; --accent-ink: #ffffff; --soft: #ffe5de; --track: #fbdcd5;
   --good: #d14b41; --bad: #8e817d; --grid: #f8e6e0;
   --r: 22px; --r-sm: 16px;
+  --c-w: #e5534b; --c-f: #1f8f7a; --c-m: #b87a10; --c-b: #7a6fd6; /* 그래프 4색 (검사 통과) */
   --shadow: 0 1px 2px rgba(59, 35, 32, .05), 0 6px 18px rgba(235, 90, 80, .06);
   --sans: system-ui, -apple-system, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
 }
@@ -27,6 +28,7 @@
     --bg: #1c1210; --card: #2a1c19; --ink: #fbede8; --muted: #c4a49c; --line: #3d2a26; --field: #34231f;
     --accent: #ff7a6e; --accent-ink: #2a0c08; --soft: #46241f; --track: #46302b;
     --good: #ff8a7f; --bad: #a8968f; --grid: #36241f;
+    --c-w: #e85e53; --c-f: #26a487; --c-m: #b9831f; --c-b: #8a7ee6;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3);
   }
 }
@@ -153,6 +155,14 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 .fb .fb-ok .fb-ic { background: var(--accent); color: var(--accent-ink); }
 .fb .fb-tip .fb-ic { background: var(--field); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
 .fb-note { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+/* 그래프 수치 고르기 */
+.ck-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.ck { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 6px 12px; border-radius: 99px; background: var(--field); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+.ck i { width: 10px; height: 10px; border-radius: 50%; opacity: .45; }
+.ck.on { background: var(--card); color: var(--ink); font-weight: 700; box-shadow: inset 0 0 0 2px var(--ink); }
+.ck.on i { opacity: 1; }
+.tip-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.more { width: 100%; margin-top: 8px; }
 .metric .bmi-cls { color: var(--accent); font-weight: 700; }
 .metric { text-align: left; background: var(--card); border-radius: var(--r-sm); box-shadow: var(--shadow); padding: 12px 12px 10px; border: 2px solid transparent; }
 .metric.on { border-color: var(--accent); }
@@ -167,7 +177,7 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 .chart-wrap .axis { fill: var(--muted); font-size: 11px; }
 .chart-wrap .vlab { fill: var(--ink); font-size: 12px; font-weight: 600; }
 .tip { position: absolute; pointer-events: none; transform: translate(-50%, calc(-100% - 12px)); background: var(--ink); color: var(--bg); font-size: 13px; line-height: 1.35; padding: 6px 10px; border-radius: 10px; white-space: nowrap; }
-.tip .delta.good, .tip .delta.bad { color: inherit; }
+.tip .delta { color: inherit; }
 .chart-sum { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 14px; color: var(--muted); }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
 .hist { list-style: none; margin: 0; padding: 0; }
@@ -249,7 +259,7 @@ if (!S.key) S.key = newKey();
 S.data = Object.assign({ days: {}, inbody: [], gym: {}, mine: {} }, S.data);
 S.goal = S.goal || 30;
 S.tab = S.tab || 'cal';
-S.metric = S.metric || 'w';
+S.chartKeys = S.chartKeys || ['w'];
 // 적다 만 입력칸 (다른 앱에 다녀오거나 앱이 다시 켜져도 그대로 남게)
 S.drafts = S.drafts || {};
 const draft = (k, def = '') => esc(S.drafts[k] ?? def);
@@ -387,7 +397,6 @@ function todayHero(ds) {
         <span class="pill ${min >= S.goal ? 'done' : ''}">${status}</span>
         <div><b class="num">${rec.steps != null ? fmtInt(rec.steps) : '–'}</b><span>걸음</span></div>
         ${(() => { const k = mineOf(ds).reduce((a, x) => a + (x.kcal || 0), 0); return k ? `<div><b class="num">${fmtInt(k)}</b><span>운동 kcal</span></div>` : ''; })()}
-        <span class="sub" style="font-size:12px">${rec.at ? `${hm(new Date(rec.at))} ${rec.manual ? '직접 적음' : '워치에서 받음'}` : '오늘 워치 기록 없음'}</span>
       </div>
     </div>
     ${editForm(ds)}
@@ -446,7 +455,7 @@ function workoutsBlock(ds, title) {
       <button class="x" data-del-mine="${esc(x.id)}" data-date="${ds}" aria-label="${esc(x.name)} 지우기">${X_ICON}</button></li>`),
   ];
   return `<div class="wo-head"><h3>${title}</h3>${!future && !open ? `<button class="btn small" data-act="mine-open" data-date="${ds}">＋ 운동 추가</button>` : ''}</div>
-    ${items.length ? `<ul class="wo">${items.join('')}</ul>` : open ? '' : `<p class="sub wo-empty">${future ? '–' : '＋를 눌러 워치에 나온 시간과 칼로리를 적어요.'}</p>`}
+    ${items.length ? `<ul class="wo">${items.join('')}</ul>` : open ? '' : ''}
     ${open ? `<div class="mine-form">
       <div class="chips">${[...QUICK, ...recent].map(n => `<button class="chip pick ${S.drafts['mine-name'] === n ? 'on' : ''}" data-pick="${esc(n)}">${esc(n)}</button>`).join('')}</div>
       <div class="form-grid" style="margin-top:10px">
@@ -565,25 +574,29 @@ function ibFeedback() {
 }
 
 function feedbackCard() {
-  const { good, tips } = ibFeedback();
-  if (!good.length && !tips.length) return '';
+  const { good } = ibFeedback();
+  if (!good.length) return '';
   const li = (cls, icon, t) => `<li class="${cls}"><span class="fb-ic" aria-hidden="true">${icon}</span><span>${esc(t)}</span></li>`;
   return `<div class="card fb">
     <h2>이번 결과 한마디</h2>
     ${good.length ? `<ul>${good.map(t => li('fb-ok', '✓', t)).join('')}</ul>` : ''}
-    ${tips.length ? `<h3>이렇게 해 보면 좋아요</h3><ul>${tips.map(t => li('fb-tip', '→', t)).join('')}</ul>` : ''}
-    <p class="fb-note">기록을 보고 정해진 규칙으로 만든 참고용 문장이에요. 체지방 표준은 여성 기준이에요.</p>
   </div>`;
 }
+
+// 그래프에 넣을 수치 (순서와 색 고정: 몸무게·체지방·근육량·BMI — 색약 구분까지 검사한 4색)
+const CHART_KEYS = ['w', 'f', 'm', 'b'];
+const chartKeys = () => (S.chartKeys || ['w']).filter(k => CHART_KEYS.includes(k) && (k !== 'b' || heightCm()));
+let ibShowAll = false;
 
 function renderIb() {
   const card = k => {
     const s = series(k), M = METRICS[k];
-    const last = s[s.length - 1], prev = s[s.length - 2], first = s[0];
+    const last = s[s.length - 1], prev = s[s.length - 2];
     if (k === 'b' && !heightCm()) return `<button class="metric" data-act="height">
       <div class="lab">BMI</div><div class="val" style="font-size:17px">키 입력</div>
       <div class="since">키를 적으면 자동 계산돼요</div></button>`;
-    return `<button class="metric ${S.metric === k ? 'on' : ''}" data-metric="${k}">
+    const on = chartKeys().length === 1 && chartKeys()[0] === k;
+    return `<button class="metric ${on ? 'on' : ''}" data-metric="${k}">
       <div class="lab">${M.lab}${k === 'b' && last ? ` · <span class="bmi-cls">${bmiClass(last.b)}</span>` : ''}</div>
       <div class="val num">${last ? f1(last[k]) : '–'}<small>${M.unit}</small></div>
       ${prev ? deltaHtml(last[k] - prev[k], k) : '<span class="delta same">&nbsp;</span>'}
@@ -591,18 +604,14 @@ function renderIb() {
     </button>`;
   };
   const list = ibSorted().reverse();
+  const shown = ibShowAll ? list : list.slice(0, 5);
   const prevOf = (e, k) => { const s = series(k); const i = s.indexOf(e); return i > 0 ? s[i - 1][k] : null; };
   const cell = (e, k) => { const p = prevOf(e, k); return `<span class="hv num">${e[k] == null ? '–' : `<b>${f1(e[k])}</b>`}${e[k] != null && p != null ? deltaHtml(e[k] - p, k) : ''}</span>`; };
+  const keys = chartKeys(), multi = keys.length > 1;
 
-  $('#v-ib').innerHTML = `
-    <div class="metrics">${card('w')}${card('m')}${card('f')}${card('b')}</div>
-    ${feedbackCard()}
-    <div class="card">
-      <h2>${METRICS[S.metric].lab} 변화${METRICS[S.metric].unit ? ` <span class="sub">(${METRICS[S.metric].unit})</span>` : ''}</h2>
-      ${S.metric === 'b' && heightCm() ? `<p class="sub" style="margin:-6px 0 8px;font-size:13px">키 ${heightCm()}cm 기준 · 18.5–22.9 정상, 23–24.9 비만 전단계, 25 이상 비만 <button class="link" data-act="height">키 바꾸기</button></p>` : ''}
-      ${chartHtml(S.metric)}
-    </div>
-    <div class="card">
+  // 오늘 결과를 아직 안 적었으면 적는 칸이 맨 위, 적었으면 맨 아래
+  const doneToday = S.data.inbody.some(e => e.date === todayStr());
+  const form = `<div class="card">
       <h2>새 결과 적기</h2>
       <div class="form-grid">
         <label class="fld">잰 날<input type="date" id="i-date" data-draft="ib-date" value="${draft('ib-date', todayStr())}" max="${todayStr()}"></label>
@@ -611,55 +620,95 @@ function renderIb() {
         <label class="fld">체지방 (%)<input id="i-f" data-draft="ib-f" value="${draft('ib-f')}" inputmode="decimal" placeholder="예: 27.0"></label>
       </div>
       <button class="btn" style="width:100%" data-act="add-ib">저장</button>
+    </div>`;
+
+  $('#v-ib').innerHTML = `
+    ${doneToday ? '' : form}
+    <div class="metrics">${card('w')}${card('m')}${card('f')}${card('b')}</div>
+    ${feedbackCard()}
+    <div class="card">
+      <h2>${multi ? '처음 기록 대비 변화' : `${METRICS[keys[0]].lab} 변화${METRICS[keys[0]].unit ? ` <span class="sub">(${METRICS[keys[0]].unit})</span>` : ''}`}</h2>
+      <div class="ck-row">${CHART_KEYS.map(k => {
+        const off = k === 'b' && !heightCm();
+        return `<button class="ck ${keys.includes(k) ? 'on' : ''}" data-ck="${k}" ${off ? 'data-act="height"' : ''} aria-pressed="${keys.includes(k)}"><i style="background:var(--c-${k})"></i>${METRICS[k].lab}</button>`;
+      }).join('')}</div>
+      ${keys.length === 1 && keys[0] === 'b' ? `<p class="sub" style="margin:0 0 6px;font-size:13px">키 ${heightCm()}cm 기준 · 18.5–22.9 정상, 23–24.9 비만 전단계, 25 이상 비만 <button class="link" data-act="height">키 바꾸기</button></p>` : ''}
+      ${multi ? '<p class="sub" style="margin:0 0 6px;font-size:13px">각 수치의 첫 기록을 0으로 놓고 얼마나 변했는지 겹쳐 봐요 (몸무게 kg, 체지방·근육량 %p, BMI 점).</p>' : ''}
+      ${chartHtml(keys)}
     </div>
     <div class="card">
       <h2>지난 기록</h2>
       ${list.length ? `<ul class="hist">
         <li class="head"><span>날짜</span><span>몸무게</span><span>근육량</span><span>체지방</span><span></span></li>
-        ${list.map(e => `<li><span class="hd num">${shortDate(e.date)}</span>${cell(e, 'w')}${cell(e, 'm')}${cell(e, 'f')}
+        ${shown.map(e => `<li><span class="hd num">${shortDate(e.date)}</span>${cell(e, 'w')}${cell(e, 'm')}${cell(e, 'f')}
           <button class="x" data-del-ib="${esc(e.id)}" aria-label="${shortDate(e.date)} 기록 지우기">${X_ICON}</button></li>`).join('')}
-      </ul>` : '<p class="empty">아직 기록이 없어요. 위에 첫 결과를 적어 보세요.</p>'}
-    </div>`;
+      </ul>
+      ${list.length > 5 ? `<button class="btn ghost small more" data-act="ib-more">${ibShowAll ? '최근 5개만 보기' : `이전 기록 ${list.length - 5}개 더 보기`}</button>` : ''}`
+      : '<p class="empty">아직 기록이 없어요. 위에 첫 결과를 적어 보세요.</p>'}
+    </div>
+    ${doneToday ? form : ''}`;
   bindChart();
 }
 
-// 선 그래프: 한 번에 한 가지 수치만 (축 하나). 처음·마지막·가장 높은·낮은 점에만 숫자 표시, 점을 누르면 자세히
+// 선 그래프. 하나만 고르면 실제 값, 여러 개면 각자 첫 기록 대비 변화(축 하나에 단위 없는 ±)로 겹침.
+// 숫자는 일부 점에만(하나: 처음·마지막·최고·최저 / 여럿: 선 끝), 점을 누르면 그날 값 전부.
 let chartPts = [];
-function chartHtml(k) {
-  const s = series(k);
-  if (!s.length) return '<p class="empty">기록을 적으면 여기에 그래프가 그려져요.</p>';
-  const W = 340, H = 190, L = 34, R = 14, T = 24, B = 26;
-  const ts = s.map(e => parseYmd(e.date).getTime());
+function chartHtml(keys) {
+  keys = keys.filter(k => series(k).length);
+  if (!keys.length) return '<p class="empty">기록을 적으면 여기에 그래프가 그려져요.</p>';
+  const multi = keys.length > 1;
+  const W = 340, H = 200, L = 34, R = multi ? 74 : 14, T = 22, B = 26;
+  const lines = keys.map(k => {
+    const s = series(k), base = s[0][k];
+    return { k, pts: s.map((e, i) => ({ t: parseYmd(e.date).getTime(), date: e.date, raw: e[k], v: multi ? r1(e[k] - base) : e[k], prev: i ? s[i - 1][k] : null })) };
+  });
+  const ts = lines.flatMap(l => l.pts.map(p => p.t));
   let t0 = Math.min(...ts), t1 = Math.max(...ts);
   if (t0 === t1) { t0 -= 864e5 * 15; t1 += 864e5 * 15; }
-  const vs = s.map(e => e[k]);
+  const vs = lines.flatMap(l => l.pts.map(p => p.v)).concat(multi ? [0] : []);
   let lo = Math.min(...vs), hi = Math.max(...vs);
-  const pad = Math.max((hi - lo) * 0.2, k === 'w' ? 1 : 0.8);
+  const pad = Math.max((hi - lo) * 0.18, multi ? 0.5 : keys[0] === 'w' ? 1 : 0.8);
   lo -= pad; hi += pad;
-  const step = niceStep((hi - lo) / 3);
+  const step = niceStep((hi - lo) / (multi ? 4 : 3));
   const ticks = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) ticks.push(r1(v));
   const X = t => L + (t - t0) / (t1 - t0) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
-  chartPts = s.map((e, i) => ({ x: X(ts[i]), y: Y(e[k]), e, prev: i ? s[i - 1][k] : null, k }));
-  // 숫자를 붙일 점: 처음, 마지막, 최고, 최저 (겹치지 않게 중복 제거)
-  const iMax = vs.indexOf(Math.max(...vs)), iMin = vs.lastIndexOf(Math.min(...vs));
-  const labeled = [...new Set([0, s.length - 1, iMax, iMin])];
-  const path = chartPts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
-  const xl = [0, s.length - 1].filter((v, i, a) => a.indexOf(v) === i);
-  if (s.length > 2) { const mid = Math.round((s.length - 1) / 2); if (chartPts[mid].x - chartPts[0].x > 60 && chartPts.at(-1).x - chartPts[mid].x > 60) xl.splice(1, 0, mid); }
-  const firstV = vs[0], lastV = vs.at(-1);
+  const fmtV = v => multi ? (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(1) : f1(v);
+
+  // 누를 수 있는 날짜들 (모든 선의 날짜를 합침)
+  const dates = [...new Set(lines.flatMap(l => l.pts.map(p => p.date)))].sort();
+  chartPts = dates.map(date => ({ date, x: X(parseYmd(date).getTime()), rows: lines.map(l => ({ k: l.k, p: l.pts.find(p => p.date === date) })).filter(r => r.p) }));
+
+  let marks = '', labels = '';
+  for (const l of lines) {
+    const col = `var(--c-${l.k})`;
+    const P = l.pts.map(p => ({ ...p, x: X(p.t), y: Y(p.v) }));
+    marks += `<path d="${P.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('')}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    marks += P.map(p => `<circle cx="${p.x}" cy="${p.y}" r="${multi ? 4 : 4.5}" fill="${col}" stroke="var(--card)" stroke-width="2" data-d="${p.date}"/>`).join('');
+    if (!multi) {
+      const v = P.map(p => p.v), iMax = v.indexOf(Math.max(...v)), iMin = v.lastIndexOf(Math.min(...v));
+      labels += [...new Set([0, P.length - 1, iMax, iMin])].map(i => { const p = P[i], below = i === iMin && i !== iMax && P.length > 1; return `<text class="vlab num" x="${Math.min(Math.max(p.x, L + 12), W - R - 12)}" y="${below ? p.y + 18 : p.y - 10}" text-anchor="middle">${f1(p.v)}</text>`; }).join('');
+    }
+    l.end = P.at(-1);
+  }
+  if (multi) {
+    // 선 끝에 이름과 변화량 (겹치지 않게 위아래로 밀기)
+    const ends = lines.map(l => ({ k: l.k, x: l.end.x, y: l.end.y, ly: l.end.y, v: l.end.v })).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < ends.length; i++) if (ends[i].ly - ends[i - 1].ly < 14) ends[i].ly = ends[i - 1].ly + 14;
+    labels = ends.map(e => `<text class="vlab num" x="${W - R + 8}" y="${e.ly + 4}"><tspan fill="var(--c-${e.k})">●</tspan> ${METRICS[e.k].lab} ${fmtV(e.v)}</text>`).join('');
+  }
+  const xl = [chartPts[0], chartPts.at(-1)].filter((v, i, a) => a.indexOf(v) === i);
   return `<div class="chart-wrap" id="chart">
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${METRICS[k].lab} ${s.length}번 기록, 처음 ${firstV} 지금 ${lastV}">
-      ${ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)" stroke-width="1"/><text class="axis num" x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
-      ${xl.map(i => `<text class="axis num" x="${chartPts[i].x}" y="${H - 6}" text-anchor="${s.length === 1 ? 'middle' : i === 0 ? 'start' : i === s.length - 1 ? 'end' : 'middle'}">${shortDate(s[i].date)}</text>`).join('')}
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${keys.map(k => METRICS[k].lab).join(', ')} 변화 그래프">
+      ${ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)" stroke-width="1"/><text class="axis num" x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${multi ? fmtV(v) : v}</text>`).join('')}
+      ${multi ? `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1" opacity=".5"/>` : ''}
+      ${xl.map((p, i) => `<text class="axis num" x="${p.x}" y="${H - 6}" text-anchor="${xl.length === 1 ? 'middle' : i === 0 ? 'start' : 'end'}">${shortDate(p.date)}</text>`).join('')}
       <line id="cross" x1="0" x2="0" y1="${T - 8}" y2="${H - B}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>
-      <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-      ${chartPts.map((p, i) => `<circle cx="${p.x}" cy="${p.y}" r="4.5" fill="var(--accent)" stroke="var(--card)" stroke-width="2" data-i="${i}"/>`).join('')}
-      ${labeled.map(i => { const p = chartPts[i], below = i === iMin && i !== iMax && s.length > 1; return `<text class="vlab num" x="${Math.min(Math.max(p.x, L + 12), W - R - 12)}" y="${below ? p.y + 18 : p.y - 10}" text-anchor="middle">${f1(vs[i])}</text>`; }).join('')}
-      <rect id="hit" x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
+      ${marks}${labels}
+      <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
     </svg>
     <div class="tip" id="tip" hidden></div>
   </div>
-  <div class="chart-sum"><span>${s.length}번 기록</span>${s.length > 1 ? `<span>처음(${shortDate(s[0].date)})보다 ${deltaHtml(lastV - firstV, k, METRICS[k].unit)}</span>` : ''}</div>`;
+  ${!multi && lines[0].pts.length > 1 ? `<div class="chart-sum"><span>${lines[0].pts.length}번 기록</span><span>처음(${shortDate(lines[0].pts[0].date)})보다 ${deltaHtml(lines[0].pts.at(-1).raw - lines[0].pts[0].raw, keys[0], METRICS[keys[0]].unit)}</span></div>` : ''}`;
 }
 function niceStep(raw) {
   const p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
@@ -672,15 +721,17 @@ function bindChart() {
     const box = svg.getBoundingClientRect(), sx = box.width / 340;
     const x = (ev.clientX - box.left) / sx;
     let best = chartPts[0]; for (const p of chartPts) if (Math.abs(p.x - x) < Math.abs(best.x - x)) best = p;
-    const M = METRICS[best.k];
-    tip.innerHTML = `${longDate(best.e.date)}<br><b class="num">${f1(best.e[best.k])}${M.unit}</b> ${best.prev != null ? deltaHtml(best.e[best.k] - best.prev, best.k) : ''}`;
-    tip.style.left = Math.min(Math.max(best.x * sx, 70), box.width - 70) + 'px';
-    tip.style.top = best.y * sx + 'px';
+    tip.innerHTML = `${longDate(best.date)}` + best.rows.map(({ k, p }) =>
+      `<br><span class="tip-dot" style="background:var(--c-${k})"></span>${METRICS[k].lab} <b class="num">${f1(p.raw)}${METRICS[k].unit}</b> ${p.prev != null ? deltaHtml(p.raw - p.prev, k) : ''}`).join('');
+    const ys = svg.querySelectorAll(`circle[data-d="${best.date}"]`);
+    const topY = Math.min(...[...ys].map(c => +c.getAttribute('cy')));
+    tip.style.left = Math.min(Math.max(best.x * sx, 80), box.width - 80) + 'px';
+    tip.style.top = topY * sx + 'px';
     tip.hidden = false;
     cross.setAttribute('x1', best.x); cross.setAttribute('x2', best.x); cross.setAttribute('visibility', 'visible');
-    svg.querySelectorAll('circle').forEach(c => c.setAttribute('r', c.dataset.i == chartPts.indexOf(best) ? 6.5 : 4.5));
+    svg.querySelectorAll('circle').forEach(c => c.setAttribute('r', c.dataset.d === best.date ? 6 : 4));
   };
-  const hide = () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); svg.querySelectorAll('circle').forEach(c => c.setAttribute('r', 4.5)); };
+  const hide = () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); svg.querySelectorAll('circle').forEach(c => c.setAttribute('r', 4)); };
   svg.addEventListener('pointermove', show);
   svg.addEventListener('pointerdown', show);
   svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hide(); });
@@ -768,7 +819,12 @@ document.addEventListener('click', async ev => {
     post({ mine: { date: ds, list } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
     return;
   }
-  if (t.dataset.metric) { S.metric = t.dataset.metric; save(); renderIb(); return; }
+  if (t.dataset.metric) { S.chartKeys = [t.dataset.metric]; save(); renderIb(); return; }
+  if (t.dataset.ck && !t.dataset.act) {
+    const k = t.dataset.ck, cur = chartKeys();
+    S.chartKeys = cur.includes(k) ? (cur.length > 1 ? cur.filter(x => x !== k) : cur) : CHART_KEYS.filter(x => cur.includes(x) || x === k);
+    save(); renderIb(); return;
+  }
   if (t.dataset.delIb) {
     const e = S.data.inbody.find(x => x.id === t.dataset.delIb);
     if (!e || !confirm(`${shortDate(e.date)} 인바디 기록을 지울까요?`)) return;
@@ -830,9 +886,10 @@ document.addEventListener('click', async ev => {
     const h = parseFloat(String(v).replace(',', '.'));
     if (!(h > 80 && h < 250)) { toast('키를 cm로 적어 주세요'); return; }
     S.data.profile = { ...(S.data.profile || {}), height: Math.round(h * 10) / 10 };
-    S.metric = 'b'; save(); renderIb();
+    S.chartKeys = ['b']; save(); renderIb();
     saveSoon({ profile: S.data.profile });
   }
+  if (a === 'ib-more') { ibShowAll = !ibShowAll; renderIb(); }
   if (a === 'goal') { const g = parseInt($('#goal').value, 10); if (g > 0 && g < 600) { S.goal = g; save(); render(); toast('저장했어요'); } }
   if (a === 'usekey') {
     const k = $('#newkey').value.trim();
