@@ -161,6 +161,12 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 .ck i { width: 10px; height: 10px; border-radius: 50%; opacity: .45; }
 .ck.on { background: var(--card); color: var(--ink); font-weight: 700; box-shadow: inset 0 0 0 2px var(--ink); }
 .ck.on i { opacity: 1; }
+.rg-row { display: flex; gap: 2px; background: var(--field); border-radius: 12px; padding: 3px; margin: 0 0 10px; }
+.rg { flex: 1; font-size: 13px; padding: 5px 0; border-radius: 9px; color: var(--muted); }
+.rg.on { background: var(--card); color: var(--ink); font-weight: 700; box-shadow: var(--shadow); }
+.chart-wrap .band-lab { fill: var(--muted); font-size: 11px; }
+.chart-wrap .band-lab.on { fill: var(--ink); font-weight: 700; }
+.chart-wrap .vlab.last { font-size: 13px; font-weight: 800; }
 .tip-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
 .more { width: 100%; margin-top: 8px; }
 .metric .bmi-cls { color: var(--accent); font-weight: 700; }
@@ -585,7 +591,10 @@ function feedbackCard() {
 
 // 그래프에 넣을 수치 (순서와 색 고정: 몸무게·체지방·근육량·BMI — 색약 구분까지 검사한 4색)
 const CHART_KEYS = ['w', 'f', 'm', 'b'];
-const chartKeys = () => (S.chartKeys || ['w']).filter(k => CHART_KEYS.includes(k) && (k !== 'b' || heightCm()));
+const chartKeys = () => {
+  const ks = (S.chartKeys || ['w']).filter(k => CHART_KEYS.includes(k) && (k !== 'b' || heightCm()));
+  return ks.length ? ks : ['w']; // 키를 아직 모르면 BMI 대신 몸무게
+};
 let ibShowAll = false;
 
 function renderIb() {
@@ -632,8 +641,9 @@ function renderIb() {
         const off = k === 'b' && !heightCm();
         return `<button class="ck ${keys.includes(k) ? 'on' : ''}" data-ck="${k}" ${off ? 'data-act="height"' : ''} aria-pressed="${keys.includes(k)}"><i style="background:var(--c-${k})"></i>${METRICS[k].lab}</button>`;
       }).join('')}</div>
-      ${keys.length === 1 && keys[0] === 'b' ? `<p class="sub" style="margin:0 0 6px;font-size:13px">키 ${heightCm()}cm 기준 · 18.5–22.9 정상, 23–24.9 비만 전단계, 25 이상 비만 <button class="link" data-act="height">키 바꾸기</button></p>` : ''}
-      ${multi ? '<p class="sub" style="margin:0 0 6px;font-size:13px">각 수치의 첫 기록을 0으로 놓고 얼마나 변했는지 겹쳐 봐요 (몸무게 kg, 체지방·근육량 %p, BMI 점).</p>' : ''}
+      <div class="rg-row">${RANGES.map(([id, lab]) => `<button class="rg ${(S.chartRange || 'all') === id ? 'on' : ''}" data-range="${id}">${lab}</button>`).join('')}</div>
+      ${keys.length === 1 && keys[0] === 'b' ? `<p class="sub" style="margin:0 0 6px;font-size:13px">키 ${heightCm()}cm 기준 (대한비만학회) · <button class="link" data-act="height">키 바꾸기</button></p>` : ''}
+      ${multi ? '<p class="sub" style="margin:0 0 6px;font-size:13px">보는 기간의 첫 기록을 0으로 놓고 겹쳐 봐요 (몸무게 kg, 체지방·근육량 %p, BMI 점)</p>' : ''}
       ${chartHtml(keys)}
     </div>
     <div class="card">
@@ -650,65 +660,120 @@ function renderIb() {
   bindChart();
 }
 
-// 선 그래프. 하나만 고르면 실제 값, 여러 개면 각자 첫 기록 대비 변화(축 하나에 단위 없는 ±)로 겹침.
+// 선 그래프. 하나만 고르면 실제 값, 여러 개면 각자 (보는 기간의) 첫 기록 대비 변화로 겹침.
+// BMI 하나만 볼 때는 18.5 / 23 / 25 / 30 기준선과 범위 띠를 깔아서 정상 범위 안인지 바로 보이게.
 // 숫자는 일부 점에만(하나: 처음·마지막·최고·최저 / 여럿: 선 끝), 점을 누르면 그날 값 전부.
+const RANGES = [['3m', '3개월', 3], ['6m', '6개월', 6], ['1y', '1년', 12], ['all', '전체', 0]];
+const BMI_BANDS = [
+  { from: 0, to: 18.5, lab: '저체중', fill: 'var(--c-b)' },
+  { from: 18.5, to: 23, lab: '정상', fill: 'var(--c-f)' },
+  { from: 23, to: 25, lab: '비만 전단계', fill: 'var(--c-m)' },
+  { from: 25, to: 30, lab: '비만 1단계', fill: 'var(--c-w)' },
+  { from: 30, to: 99, lab: '비만 2단계 이상', fill: 'var(--c-w)' },
+];
 let chartPts = [];
 function chartHtml(keys) {
   keys = keys.filter(k => series(k).length);
   if (!keys.length) return '<p class="empty">기록을 적으면 여기에 그래프가 그려져요.</p>';
-  const multi = keys.length > 1;
-  const W = 340, H = 200, L = 34, R = multi ? 74 : 14, T = 22, B = 26;
+  const multi = keys.length > 1, bmi = !multi && keys[0] === 'b';
+  const months = (RANGES.find(r => r[0] === (S.chartRange || 'all')) || RANGES[3])[2];
+  const now = parseYmd(todayStr());
+  const cut = months ? new Date(now.getFullYear(), now.getMonth() - months, now.getDate()).getTime() : -Infinity;
+
   const lines = keys.map(k => {
-    const s = series(k), base = s[0][k];
-    return { k, pts: s.map((e, i) => ({ t: parseYmd(e.date).getTime(), date: e.date, raw: e[k], v: multi ? r1(e[k] - base) : e[k], prev: i ? s[i - 1][k] : null })) };
-  });
+    const s = series(k), all = s.map((e, i) => ({ t: parseYmd(e.date).getTime(), date: e.date, raw: e[k], prev: i ? s[i - 1][k] : null }));
+    const pts = all.filter(p => p.t >= cut);
+    const base = pts.length ? pts[0].raw : 0;
+    pts.forEach(p => (p.v = multi ? r1(p.raw - base) : p.raw));
+    return { k, pts };
+  }).filter(l => l.pts.length);
+  if (!lines.length) return '<p class="empty">이 기간에는 기록이 없어요. 기간을 넓혀 보세요.</p>';
+
+  const W = 340, H = 220, L = 36, R = multi ? 74 : bmi ? 66 : 14, T = 18, B = 28;
   const ts = lines.flatMap(l => l.pts.map(p => p.t));
   let t0 = Math.min(...ts), t1 = Math.max(...ts);
   if (t0 === t1) { t0 -= 864e5 * 15; t1 += 864e5 * 15; }
   const vs = lines.flatMap(l => l.pts.map(p => p.v)).concat(multi ? [0] : []);
-  let lo = Math.min(...vs), hi = Math.max(...vs);
-  const pad = Math.max((hi - lo) * 0.18, multi ? 0.5 : keys[0] === 'w' ? 1 : 0.8);
-  lo -= pad; hi += pad;
-  const step = niceStep((hi - lo) / (multi ? 4 : 3));
-  const ticks = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) ticks.push(r1(v));
+  let lo = Math.min(...vs), hi = Math.max(...vs), ticks;
+  if (bmi) {
+    // 18.5–30 이 늘 보이도록, 기록이 밖에 있으면 넓힘
+    lo = Math.min(18, Math.floor(lo - 0.5)); hi = Math.max(30.5, Math.ceil(hi + 0.5));
+    ticks = [18.5, 23, 25, 30].filter(v => v > lo && v < hi);
+  } else {
+    const pad = Math.max((hi - lo) * 0.18, multi ? 0.5 : keys[0] === 'w' ? 1 : 0.8);
+    lo -= pad; hi += pad;
+    const step = niceStep((hi - lo) / (multi ? 4 : 3));
+    ticks = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) ticks.push(r1(v));
+  }
   const X = t => L + (t - t0) / (t1 - t0) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
   const fmtV = v => multi ? (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(1) : f1(v);
+  const x0 = L, x1 = W - R, yB = H - B;
 
   // 누를 수 있는 날짜들 (모든 선의 날짜를 합침)
   const dates = [...new Set(lines.flatMap(l => l.pts.map(p => p.date)))].sort();
   chartPts = dates.map(date => ({ date, x: X(parseYmd(date).getTime()), rows: lines.map(l => ({ k: l.k, p: l.pts.find(p => p.date === date) })).filter(r => r.p) }));
 
+  // 아래 날짜 눈금: 달이 바뀌는 곳마다, 너무 많으면 건너뜀
+  const monthTicks = [];
+  for (let d = new Date(new Date(t0).getFullYear(), new Date(t0).getMonth() + 1, 1); d.getTime() <= t1; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) monthTicks.push(d);
+  const every = Math.ceil(monthTicks.length / 5) || 1;
+  const xTicks = monthTicks.filter((_, i) => i % every === 0)
+    .map(d => ({ x: X(d.getTime()), lab: d.getMonth() === 0 ? `${String(d.getFullYear()).slice(2)}년 1월` : `${d.getMonth() + 1}월` }))
+    .filter(t => t.x > x0 + 14 && t.x < x1 - 14);
+
+  // BMI 범위 띠와 이름
+  let bands = '';
+  if (bmi) {
+    for (const b of BMI_BANDS) {
+      const yTop = Y(Math.min(b.to, hi)), yBot = Y(Math.max(b.from, lo));
+      if (yBot <= yTop) continue;
+      const normal = b.lab === '정상';
+      bands += `<rect x="${x0}" y="${yTop}" width="${x1 - x0}" height="${yBot - yTop}" fill="${b.fill}" opacity="${normal ? 0.16 : 0.07}"/>`;
+      if (yBot - yTop >= 11) bands += `<rect x="${x1 + 4}" y="${yTop + 1}" width="3" height="${yBot - yTop - 2}" rx="1.5" fill="${b.fill}" opacity="${normal ? 0.9 : 0.45}"/><text class="band-lab${normal ? ' on' : ''}" x="${x1 + 11}" y="${(yTop + yBot) / 2 + 4}">${b.lab.replace(' 이상', '+')}</text>`;
+    }
+  }
+
   let marks = '', labels = '';
   for (const l of lines) {
     const col = `var(--c-${l.k})`;
     const P = l.pts.map(p => ({ ...p, x: X(p.t), y: Y(p.v) }));
-    marks += `<path d="${P.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('')}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-    marks += P.map(p => `<circle cx="${p.x}" cy="${p.y}" r="${multi ? 4 : 4.5}" fill="${col}" stroke="var(--card)" stroke-width="2" data-d="${p.date}"/>`).join('');
+    const line = P.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
+    if (!multi && !bmi && P.length > 1) marks += `<path d="${line}L${P.at(-1).x.toFixed(1)},${yB}L${P[0].x.toFixed(1)},${yB}Z" fill="${col}" opacity=".08"/>`;
+    marks += `<path d="${line}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    marks += P.map((p, i) => {
+      const lastPt = i === P.length - 1;
+      return `<circle cx="${p.x}" cy="${p.y}" r="${lastPt ? 6 : multi ? 3.5 : 4}" fill="${lastPt ? 'var(--card)' : col}" stroke="${lastPt ? col : 'var(--card)'}" stroke-width="${lastPt ? 3 : 1.5}" data-d="${p.date}" data-last="${lastPt ? 1 : ''}"/>`;
+    }).join('');
     if (!multi) {
       const v = P.map(p => p.v), iMax = v.indexOf(Math.max(...v)), iMin = v.lastIndexOf(Math.min(...v));
-      labels += [...new Set([0, P.length - 1, iMax, iMin])].map(i => { const p = P[i], below = i === iMin && i !== iMax && P.length > 1; return `<text class="vlab num" x="${Math.min(Math.max(p.x, L + 12), W - R - 12)}" y="${below ? p.y + 18 : p.y - 10}" text-anchor="middle">${f1(p.v)}</text>`; }).join('');
+      labels += [...new Set([0, P.length - 1, iMax, iMin])].map(i => {
+        const p = P[i], below = i === iMin && i !== iMax && P.length > 1, isLast = i === P.length - 1;
+        return `<text class="vlab num${isLast ? ' last' : ''}" x="${Math.min(Math.max(p.x, x0 + 14), x1 - 14)}" y="${below ? p.y + 19 : p.y - 11}" text-anchor="middle">${f1(p.v)}</text>`;
+      }).join('');
     }
     l.end = P.at(-1);
   }
   if (multi) {
     // 선 끝에 이름과 변화량 (겹치지 않게 위아래로 밀기)
-    const ends = lines.map(l => ({ k: l.k, x: l.end.x, y: l.end.y, ly: l.end.y, v: l.end.v })).sort((a, b) => a.y - b.y);
+    const ends = lines.map(l => ({ k: l.k, y: l.end.y, ly: l.end.y, v: l.end.v })).sort((a, b) => a.y - b.y);
     for (let i = 1; i < ends.length; i++) if (ends[i].ly - ends[i - 1].ly < 14) ends[i].ly = ends[i - 1].ly + 14;
-    labels = ends.map(e => `<text class="vlab num" x="${W - R + 8}" y="${e.ly + 4}"><tspan fill="var(--c-${e.k})">●</tspan> ${METRICS[e.k].lab} ${fmtV(e.v)}</text>`).join('');
+    labels = ends.map(e => `<text class="vlab num" x="${x1 + 8}" y="${e.ly + 4}"><tspan fill="var(--c-${e.k})">●</tspan> ${METRICS[e.k].lab} ${fmtV(e.v)}</text>`).join('');
   }
-  const xl = [chartPts[0], chartPts.at(-1)].filter((v, i, a) => a.indexOf(v) === i);
+  const first = lines[0].pts[0], last = lines[0].pts.at(-1);
   return `<div class="chart-wrap" id="chart">
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${keys.map(k => METRICS[k].lab).join(', ')} 변화 그래프">
-      ${ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)" stroke-width="1"/><text class="axis num" x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${multi ? fmtV(v) : v}</text>`).join('')}
-      ${multi ? `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1" opacity=".5"/>` : ''}
-      ${xl.map((p, i) => `<text class="axis num" x="${p.x}" y="${H - 6}" text-anchor="${xl.length === 1 ? 'middle' : i === 0 ? 'start' : 'end'}">${shortDate(p.date)}</text>`).join('')}
-      <line id="cross" x1="0" x2="0" y1="${T - 8}" y2="${H - B}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>
+      ${bands}
+      ${ticks.map(v => `<line x1="${x0}" x2="${x1}" y1="${Y(v)}" y2="${Y(v)}" stroke="${bmi ? 'var(--muted)' : 'var(--grid)'}" stroke-width="1" ${bmi ? 'stroke-dasharray="3 4" opacity=".45"' : ''}/><text class="axis num" x="${x0 - 6}" y="${Y(v) + 4}" text-anchor="end">${multi ? fmtV(v) : v}</text>`).join('')}
+      ${multi ? `<line x1="${x0}" x2="${x1}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1" opacity=".5"/>` : ''}
+      <line x1="${x0}" x2="${x1}" y1="${yB}" y2="${yB}" stroke="var(--line)" stroke-width="1"/>
+      ${xTicks.map(t => `<line x1="${t.x}" x2="${t.x}" y1="${yB}" y2="${yB + 4}" stroke="var(--line)"/><text class="axis" x="${t.x}" y="${H - 8}" text-anchor="middle">${t.lab}</text>`).join('')}
+      <line id="cross" x1="0" x2="0" y1="${T - 6}" y2="${yB}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>
       ${marks}${labels}
       <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
     </svg>
     <div class="tip" id="tip" hidden></div>
   </div>
-  ${!multi && lines[0].pts.length > 1 ? `<div class="chart-sum"><span>${lines[0].pts.length}번 기록</span><span>처음(${shortDate(lines[0].pts[0].date)})보다 ${deltaHtml(lines[0].pts.at(-1).raw - lines[0].pts[0].raw, keys[0], METRICS[keys[0]].unit)}</span></div>` : ''}`;
+  ${!multi && lines[0].pts.length > 1 ? `<div class="chart-sum"><span>${shortDate(first.date)} ~ ${shortDate(last.date)} · ${lines[0].pts.length}번</span><span>${deltaHtml(last.raw - first.raw, keys[0], METRICS[keys[0]].unit)}${bmi ? ` · 지금 <b style="color:var(--ink)">${bmiClass(last.raw)}</b>` : ''}</span></div>` : ''}`;
 }
 function niceStep(raw) {
   const p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
@@ -717,6 +782,7 @@ function niceStep(raw) {
 function bindChart() {
   const wrap = $('#chart'); if (!wrap) return;
   const svg = wrap.querySelector('svg'), tip = $('#tip'), cross = $('#cross');
+  svg.querySelectorAll('circle').forEach(c => (c.dataset.r = c.getAttribute('r')));
   const show = ev => {
     const box = svg.getBoundingClientRect(), sx = box.width / 340;
     const x = (ev.clientX - box.left) / sx;
@@ -729,9 +795,9 @@ function bindChart() {
     tip.style.top = topY * sx + 'px';
     tip.hidden = false;
     cross.setAttribute('x1', best.x); cross.setAttribute('x2', best.x); cross.setAttribute('visibility', 'visible');
-    svg.querySelectorAll('circle').forEach(c => c.setAttribute('r', c.dataset.d === best.date ? 6 : 4));
+    svg.querySelectorAll('circle').forEach(c => c.setAttribute('r', c.dataset.d === best.date ? +c.dataset.r + 2 : c.dataset.r));
   };
-  const hide = () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); svg.querySelectorAll('circle').forEach(c => c.setAttribute('r', 4)); };
+  const hide = () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); svg.querySelectorAll('circle').forEach(c => c.setAttribute('r', c.dataset.r)); };
   svg.addEventListener('pointermove', show);
   svg.addEventListener('pointerdown', show);
   svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hide(); });
@@ -820,6 +886,7 @@ document.addEventListener('click', async ev => {
     return;
   }
   if (t.dataset.metric) { S.chartKeys = [t.dataset.metric]; save(); renderIb(); return; }
+  if (t.dataset.range) { S.chartRange = t.dataset.range; save(); renderIb(); return; }
   if (t.dataset.ck && !t.dataset.act) {
     const k = t.dataset.ck, cur = chartKeys();
     S.chartKeys = cur.includes(k) ? (cur.length > 1 ? cur.filter(x => x !== k) : cur) : CHART_KEYS.filter(x => cur.includes(x) || x === k);
