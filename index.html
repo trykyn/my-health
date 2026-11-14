@@ -111,6 +111,26 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 .wo .x { flex: none; width: 28px; height: 28px; border-radius: 50%; color: var(--muted); display: grid; place-items: center; }
 .wo .x svg { width: 16px; height: 16px; }
 .mine-form { margin-top: 8px; padding-top: 6px; }
+.wo .src { flex: none; font-size: 11px; font-weight: 700; color: var(--accent); background: var(--soft); border-radius: 99px; padding: 2px 8px; }
+/* 오늘 요약 (첫 화면 맨 위) */
+.hero { padding: 18px 16px 14px; }
+.hero-date { margin: 0 0 10px; font-size: 15px; font-weight: 800; color: var(--accent); }
+.hero-top { display: flex; align-items: center; gap: 18px; }
+.big-ring { position: relative; flex: none; width: 128px; height: 128px; }
+.big-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.big-ring .in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.big-ring .in b { font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+.big-ring .in span { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.hero-facts { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.hero-facts b { font-size: 26px; font-weight: 800; line-height: 1.1; }
+.hero-facts b + span { font-size: 13px; color: var(--muted); margin-left: 4px; }
+.pill { font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: var(--soft); color: var(--ink); }
+.pill.done { background: var(--accent); color: var(--accent-ink); }
+.edit-link { text-align: right; margin-top: 4px; }
+.link { font-size: 13px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; padding: 6px 0; }
+.ib-mini { display: block; width: 100%; text-align: left; padding: 2px 0; }
+.ib-vals { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 14px; margin-top: 2px; }
+.ib-vals b { font-weight: 800; }
 .day .my { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 .legend-line i.lg-my { background: var(--accent); opacity: 1; }
 .detail-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
@@ -190,7 +210,7 @@ ol.steps b { font-weight: 600; }
 </main>
 
 <nav class="tabbar">
-  <button data-tab="cal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>달력</button>
+  <button data-tab="cal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>오늘</button>
   <button data-tab="ib"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M5 16l5-5 4 3 6-7"/></svg>인바디</button>
   <button data-tab="gym"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>헬스</button>
 </nav>
@@ -244,9 +264,7 @@ const fmtInt = n => Number(n).toLocaleString('ko-KR');
 
 let view = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })();
 let sel = todayStr();
-let editing = false;
-if (S.drafts['day-edit']) { sel = S.drafts['day-edit']; editing = true; }
-const stopEditing = () => { editing = false; clearDrafts('day-'); save(); };
+const stopEditing = () => { clearDrafts('day-'); save(); };
 
 // ── 서버와 주고받기 ──
 let syncing = false;
@@ -322,44 +340,77 @@ function ring(min) {
 // 그날 운동한 시간: 워치 기록과 내가 추가한 운동 중 큰 쪽 (워치를 차고 한 운동을 또 적어도 두 번 세지 않게)
 const mineOf = ds => (S.data.mine && S.data.mine[ds]) || [];
 const dayMin = ds => Math.max((S.data.days[ds] || {}).min || 0, mineOf(ds).reduce((a, x) => a + (x.min || 0), 0));
+const hm = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
+// 첫 화면: 위에는 오늘 요약(크게), 아래에 달력. 달력에서 다른 날을 누르면 달력 밑에 그날 자세히.
 function renderCal() {
+  const today = todayStr();
+  const neverSynced = !Object.values(S.data.days).some(r => r.at && !r.manual);
+  $('#v-cal').innerHTML = `
+    ${neverSynced ? `<div class="banner"><div><b>Apple Watch 연결하기</b>운동이 끝나면 여기로 바로 올라오게 설정해요.</div><button class="btn small" data-act="setup">설정 방법</button></div>` : ''}
+    ${todayHero(today)}
+    ${calendarCard(today)}
+    ${sel !== today ? dayDetail(sel) : ''}`;
+}
+
+// 큰 링: 하루 목표를 채운 만큼
+function bigRing(min) {
+  const r = 50, c = 2 * Math.PI * r, p = Math.min(min / S.goal, 1);
+  return `<div class="big-ring"><svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--track)" stroke-width="12"/>
+      ${p > 0 ? `<circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(c * p).toFixed(2)} ${c.toFixed(2)}"/>` : ''}
+    </svg><div class="in"><b class="num">${min}</b><span>/ ${S.goal}분</span></div></div>`;
+}
+
+function todayHero(ds) {
+  const rec = S.data.days[ds] || {}, min = dayMin(ds);
+  const status = min >= S.goal ? '오늘 목표 달성!' : min > 0 ? `목표까지 ${S.goal - min}분` : '아직 운동 전이에요';
+  const last = ibSorted().at(-1), prev = last && ibSorted().at(-2);
+  const ibLine = last ? `<button class="ib-mini" data-tab="ib">
+      <span class="sub">최근 인바디 · ${shortDate(last.date)}</span>
+      <span class="ib-vals num">${['w', 'm', 'f'].filter(k => last[k] != null).map(k => `<span>${METRICS[k].lab} <b>${f1(last[k])}${METRICS[k].unit}</b> ${prev && prev[k] != null ? deltaHtml(last[k] - prev[k], k) : ''}</span>`).join('')}</span>
+    </button>` : '';
+  return `<div class="card hero">
+    <p class="hero-date">오늘 · ${longDate(ds)}</p>
+    <div class="hero-top">
+      ${bigRing(min)}
+      <div class="hero-facts">
+        <span class="pill ${min >= S.goal ? 'done' : ''}">${status}</span>
+        <div><b class="num">${rec.steps != null ? fmtInt(rec.steps) : '–'}</b><span>걸음</span></div>
+        ${rec.min != null && mineOf(ds).length ? `<div class="sub" style="font-size:13px">워치 ${rec.min}분 · 직접 ${mineOf(ds).reduce((a, x) => a + (x.min || 0), 0)}분</div>` : ''}
+        <span class="sub" style="font-size:12px">${rec.at ? `${hm(new Date(rec.at))} ${rec.manual ? '직접 적음' : '워치에서 받음'}` : '오늘 워치 기록 없음'}</span>
+      </div>
+    </div>
+    ${editForm(ds)}
+    <div class="wo-sep"></div>
+    ${workoutsBlock(ds, '오늘 한 운동')}
+    ${ibLine ? `<div class="wo-sep"></div>${ibLine}` : ''}
+  </div>`;
+}
+
+function calendarCard(today) {
   const D = S.data.days, y = view.getFullYear(), m = view.getMonth();
   const first = new Date(y, m, 1), off = (first.getDay() + 6) % 7, n = new Date(y, m + 1, 0).getDate();
-  const today = todayStr();
   const ibDates = new Set(S.data.inbody.map(e => e.date));
-  let cells = '', active = 0, sumMin = 0, sumSteps = 0, stepDays = 0;
+  let cells = '', active = 0;
   for (let i = 0; i < off; i++) cells += '<span></span>';
   for (let d = 1; d <= n; d++) {
-    const ds = ymd(new Date(y, m, d)), rec = D[ds] || {}, min = dayMin(ds), mine = mineOf(ds).length;
+    const ds = ymd(new Date(y, m, d)), min = dayMin(ds), mine = mineOf(ds).length;
     if (min > 0 || mine) active++;
-    sumMin += min;
-    if (rec.steps > 0) { sumSteps += rec.steps; stepDays++; }
-    const cls = ['day', ds === today && 'today', ds === sel && 'sel', ds > today && 'future'].filter(Boolean).join(' ');
+    const cls = ['day', ds === today && 'today', ds === sel && ds !== today && 'sel', ds > today && 'future'].filter(Boolean).join(' ');
     cells += `<button class="${cls}" data-day="${ds}" aria-label="${longDate(ds)}${min ? `, 운동 ${min}분` : ''}${mine ? `, 직접 추가한 운동 ${mine}개` : ''}">
       <span class="dn num">${d}</span>${ds > today ? '<svg class="ring"></svg>' : ring(min)}
       <span class="dm num">${min ? min + '분' : ''}</span>${mine ? '<i class="my"></i>' : ''}${ibDates.has(ds) ? '<i class="ib"></i>' : ''}</button>`;
   }
-  const hours = Math.floor(sumMin / 60), mins = sumMin % 60;
-  const neverSynced = !Object.values(D).some(r => r.at && !r.manual);
-
-  $('#v-cal').innerHTML = `
-    ${neverSynced ? `<div class="banner"><div><b>Apple Watch 연결하기</b>운동이 끝나면 여기로 바로 올라오게 설정해요.</div><button class="btn small" data-act="setup">설정 방법</button></div>` : ''}
-    <div class="card">
-      <div class="month-head">
-        <h2>${y}년 ${m + 1}월</h2>
-        <div class="arrows"><button data-act="prev" aria-label="지난달">${ARROW_L}</button><button data-act="next" aria-label="다음 달">${ARROW_R}</button></div>
-      </div>
-      <div class="stats">
-        <div class="stat"><b class="num">${active}일</b><span>운동한 날</span></div>
-        <div class="stat"><b class="num">${hours ? hours + '시간 ' : ''}${mins}분</b><span>총 운동 시간</span></div>
-        <div class="stat"><b class="num">${stepDays ? fmtInt(Math.round(sumSteps / stepDays)) : '–'}</b><span>평균 걸음</span></div>
-      </div>
-      <div class="wk">${WD.map(w => `<span>${w}</span>`).join('')}</div>
-      <div class="grid" id="grid">${cells}</div>
-      <div class="legend-line"><span>링 = 하루 목표 ${S.goal}분 중 채운 만큼</span><span><i class="lg-my"></i>직접 추가한 운동</span><span><i></i>인바디 잰 날</span></div>
+  return `<div class="card">
+    <div class="month-head">
+      <div><h2>${y}년 ${m + 1}월</h2><span class="sub" style="font-size:13px">${active}일 운동</span></div>
+      <div class="arrows"><button data-act="prev" aria-label="지난달">${ARROW_L}</button><button data-act="next" aria-label="다음 달">${ARROW_R}</button></div>
     </div>
-    ${dayDetail(sel)}`;
+    <div class="wk">${WD.map(w => `<span>${w}</span>`).join('')}</div>
+    <div class="grid" id="grid">${cells}</div>
+    <div class="legend-line"><span>링 = 하루 목표 ${S.goal}분 중 채운 만큼</span><span><i class="lg-my"></i>직접 추가한 운동</span><span><i></i>인바디 잰 날</span></div>
+  </div>`;
 }
 
 // 워치 운동 이름: 영어로 오면 한국어로 (모르는 이름은 그대로)
@@ -375,40 +426,18 @@ const WORKOUT_KO = [
 const workoutName = x => { for (const [re, ko] of WORKOUT_KO) if (re.test(x)) return ko; return x; };
 const QUICK = ['헬스', 'PT', '걷기', '러닝', '요가', '필라테스', '수영', '자전거', '스트레칭'];
 
-function dayDetail(ds) {
-  const rec = S.data.days[ds], ib = S.data.inbody.find(e => e.date === ds), mine = mineOf(ds);
-  const has = rec && (rec.min != null || rec.kcal != null || rec.steps != null);
-  const future = ds > todayStr();
-  const t = (v, unit, lab) => `<div class="tile"><b class="num">${v == null ? '–' : fmtInt(v)}<small>${unit}</small></b><span>${lab}</span></div>`;
-  const when = rec && rec.at ? new Date(rec.at) : null;
-  const hm = d => `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  let body = has
-    ? `<div class="tiles">${t(rec.min, '분', mine.length ? '워치 운동 시간' : '운동 시간')}${t(rec.steps, '', '걸음')}${rec.kcal != null ? t(rec.kcal, 'kcal', '활동 칼로리') : ''}</div>`
-    : `<p class="sub" style="margin:0">${future ? '아직 오지 않은 날이에요.' : '이날은 워치 기록이 없어요.'}</p>`;
-  if (ib) body += `<p class="sub" style="margin:10px 0 0">인바디 · ${[ib.w != null && f1(ib.w) + 'kg', ib.m != null && '근육 ' + f1(ib.m) + '%', ib.f != null && '체지방 ' + f1(ib.f) + '%'].filter(Boolean).join(' · ')}</p>`;
-  const form = editing ? `
-    <div class="edit-row">
-      <label class="fld">운동(분)<input id="e-min" data-draft="day-min" inputmode="numeric" value="${draft('day-min', rec?.min ?? '')}"></label>
-      <label class="fld">걸음<input id="e-steps" data-draft="day-steps" inputmode="numeric" value="${draft('day-steps', rec?.steps ?? '')}"></label>
-    </div>
-    <div class="detail-foot"><button class="btn small ghost" data-act="del-day">지우기</button>
-      <span style="display:flex;gap:8px"><button class="btn small ghost" data-act="cancel">취소</button><button class="btn small" data-act="save-day">저장</button></span></div>` : `
-    <div class="detail-foot"><span class="sub">${when ? `${hm(when)} ${rec.manual ? '직접 적음' : '워치에서 받음'}` : ''}</span>
-      ${!future ? '<button class="btn small ghost" data-act="edit">직접 고치기</button>' : ''}</div>`;
-
-  // Apple Watch 운동 목록
-  const watch = (rec && rec.watch) || [];
-  const watchHtml = `<div class="wo-head"><h3>Apple Watch 운동</h3></div>
-    ${watch.length ? `<ul class="wo">${watch.map(x => `<li><span class="wo-dot watch"></span><span class="wo-name">${esc(workoutName(x))}</span></li>`).join('')}</ul>`
-      : `<p class="sub wo-empty">${future ? '–' : '워치로 한 운동이 없거나 아직 안 왔어요.'}</p>`}`;
-
-  // 내가 추가한 운동
-  const open = S.drafts['mine-open'] === ds;
+// 그날 운동 목록: 워치 운동 + 내가 추가한 운동을 한 목록으로, 출처 표시와 함께
+function workoutsBlock(ds, title) {
+  const rec = S.data.days[ds] || {}, watch = rec.watch || [], mine = mineOf(ds);
+  const future = ds > todayStr(), open = S.drafts['mine-open'] === ds;
   const recent = [...new Set(Object.values(S.data.mine || {}).flat().map(x => x.name))].filter(n => !QUICK.includes(n)).slice(-6);
-  const mineHtml = `<div class="wo-head"><h3>내가 추가한 운동</h3>${!future && !open ? '<button class="btn small" data-act="mine-open">＋ 운동 추가</button>' : ''}</div>
-    ${mine.length ? `<ul class="wo">${mine.map(x => `<li><span class="wo-dot"></span><span class="wo-name">${esc(x.name)}${x.min ? ` <span class="sub num">· ${x.min}분</span>` : ''}${x.note ? `<span class="wo-note">${esc(x.note)}</span>` : ''}</span>
-        <button class="x" data-del-mine="${esc(x.id)}" aria-label="${esc(x.name)} 지우기">${X_ICON}</button></li>`).join('')}</ul>`
-      : (open ? '' : `<p class="sub wo-empty">${future ? '–' : '워치 없이 한 운동이나 따로 남기고 싶은 운동을 적어요.'}</p>`)}
+  const items = [
+    ...watch.map(x => `<li><span class="wo-dot watch"></span><span class="wo-name">${esc(workoutName(x))}</span><span class="src">워치</span></li>`),
+    ...mine.map(x => `<li><span class="wo-dot"></span><span class="wo-name">${esc(x.name)}${x.min ? ` <span class="sub num">· ${x.min}분</span>` : ''}${x.note ? `<span class="wo-note">${esc(x.note)}</span>` : ''}</span>
+      <button class="x" data-del-mine="${esc(x.id)}" data-date="${ds}" aria-label="${esc(x.name)} 지우기">${X_ICON}</button></li>`),
+  ];
+  return `<div class="wo-head"><h3>${title}</h3>${!future && !open ? `<button class="btn small" data-act="mine-open" data-date="${ds}">＋ 운동 추가</button>` : ''}</div>
+    ${items.length ? `<ul class="wo">${items.join('')}</ul>` : open ? '' : `<p class="sub wo-empty">${future ? '–' : '워치 운동이 오면 여기에 보이고, 따로 한 운동은 ＋로 적어요.'}</p>`}
     ${open ? `<div class="mine-form">
       <div class="chips">${[...QUICK, ...recent].map(n => `<button class="chip pick ${S.drafts['mine-name'] === n ? 'on' : ''}" data-pick="${esc(n)}">${esc(n)}</button>`).join('')}</div>
       <div class="form-grid" style="margin-top:10px">
@@ -416,11 +445,33 @@ function dayDetail(ds) {
         <label class="fld">시간 (분)<input id="m-min" data-draft="mine-min" value="${draft('mine-min')}" inputmode="numeric" placeholder="예: 50"></label>
       </div>
       <label class="fld">메모 (선택)<input id="m-note" data-draft="mine-note" value="${draft('mine-note')}" placeholder="예: 스쿼트 40kg 5세트"></label>
-      <div class="detail-foot"><span></span><span style="display:flex;gap:8px"><button class="btn small ghost" data-act="mine-cancel">취소</button><button class="btn small" data-act="mine-save">추가</button></span></div>
+      <div class="detail-foot"><span></span><span style="display:flex;gap:8px"><button class="btn small ghost" data-act="mine-cancel">취소</button><button class="btn small" data-act="mine-save" data-date="${ds}">추가</button></span></div>
     </div>` : ''}`;
+}
 
-  return `<div class="card"><h2>${longDate(ds)}</h2>${body}${form}</div>
-    <div class="card">${watchHtml}<div class="wo-sep"></div>${mineHtml}</div>`;
+// 워치 숫자 직접 고치기 (그날 하나만 열림)
+function editForm(ds) {
+  const rec = S.data.days[ds];
+  if (S.drafts['day-edit'] === ds) return `
+    <div class="edit-row">
+      <label class="fld">워치 운동(분)<input id="e-min" data-draft="day-min" inputmode="numeric" value="${draft('day-min', rec?.min ?? '')}"></label>
+      <label class="fld">걸음<input id="e-steps" data-draft="day-steps" inputmode="numeric" value="${draft('day-steps', rec?.steps ?? '')}"></label>
+    </div>
+    <div class="detail-foot"><button class="btn small ghost" data-act="del-day" data-date="${ds}">지우기</button>
+      <span style="display:flex;gap:8px"><button class="btn small ghost" data-act="cancel">취소</button><button class="btn small" data-act="save-day" data-date="${ds}">저장</button></span></div>`;
+  return ds > todayStr() ? '' : `<div class="edit-link"><button class="link" data-act="edit" data-date="${ds}">숫자 직접 고치기</button></div>`;
+}
+
+// 달력에서 고른 다른 날
+function dayDetail(ds) {
+  const rec = S.data.days[ds], ib = S.data.inbody.find(e => e.date === ds), mine = mineOf(ds);
+  const has = rec && (rec.min != null || rec.steps != null);
+  const t = (v, unit, lab) => `<div class="tile"><b class="num">${v == null ? '–' : fmtInt(v)}<small>${unit}</small></b><span>${lab}</span></div>`;
+  let body = has
+    ? `<div class="tiles">${t(rec.min, '분', mine.length ? '워치 운동 시간' : '운동 시간')}${t(rec.steps, '', '걸음')}</div>`
+    : `<p class="sub" style="margin:0">${ds > todayStr() ? '아직 오지 않은 날이에요.' : '이날은 워치 기록이 없어요.'}</p>`;
+  if (ib) body += `<p class="sub" style="margin:10px 0 0">인바디 · ${[ib.w != null && f1(ib.w) + 'kg', ib.m != null && '근육 ' + f1(ib.m) + '%', ib.f != null && '체지방 ' + f1(ib.f) + '%'].filter(Boolean).join(' · ')}</p>`;
+  return `<div class="card" id="day-detail"><h2>${longDate(ds)}</h2>${body}${editForm(ds)}<div class="wo-sep"></div>${workoutsBlock(ds, '운동')}</div>`;
 }
 
 // ── 인바디 ──
@@ -605,19 +656,28 @@ function renderSettings() {
     </div>`;
 }
 
+// 화면을 그 칸까지 내림 (scrollIntoView 는 바깥 틀까지 움직일 수 있어서 창만 스크롤)
+const scrollToEl = (el, gap = 0) => { if (el) scrollTo({ top: el.getBoundingClientRect().top + scrollY - gap, behavior: 'smooth' }); };
+
 // ── 누르기 ──
 document.addEventListener('click', async ev => {
   const t = ev.target.closest('button'); if (!t) return;
   if (t.dataset.tab) { S.tab = t.dataset.tab; stopEditing(); render(); scrollTo(0, 0); return; }
-  if (t.dataset.day) { sel = t.dataset.day; stopEditing(); if (S.drafts['mine-open'] !== sel) clearDrafts('mine-'); save(); renderCal(); return; }
+  if (t.dataset.day) {
+    sel = t.dataset.day; stopEditing(); save(); renderCal();
+    if (sel === todayStr()) scrollTo({ top: 0, behavior: 'smooth' });
+    else scrollToEl($('#day-detail'), 12);
+    return;
+  }
   if (t.dataset.pick) { S.drafts['mine-name'] = t.dataset.pick; save(); renderCal(); return; }
+  const ds = t.dataset.date || sel;
   if (t.dataset.delMine) {
-    const x = mineOf(sel).find(w => w.id === t.dataset.delMine);
+    const x = mineOf(ds).find(w => w.id === t.dataset.delMine);
     if (!x || !confirm(`'${x.name}' 운동을 지울까요?`)) return;
-    const list = mineOf(sel).filter(w => w !== x);
-    if (list.length) S.data.mine[sel] = list; else delete S.data.mine[sel];
+    const list = mineOf(ds).filter(w => w !== x);
+    if (list.length) S.data.mine[ds] = list; else delete S.data.mine[ds];
     save(); renderCal();
-    post({ mine: { date: sel, list } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
+    post({ mine: { date: ds, list } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
     return;
   }
   if (t.dataset.metric) { S.metric = t.dataset.metric; save(); renderIb(); return; }
@@ -628,36 +688,36 @@ document.addEventListener('click', async ev => {
     saveSoon({ inbody: S.data.inbody }); return;
   }
   const a = t.dataset.act;
-  if (a === 'mine-open') { S.drafts['mine-open'] = sel; save(); renderCal(); setTimeout(() => $('#m-name') && $('#m-name').scrollIntoView({ block: 'center', behavior: 'smooth' }), 50); }
+  if (a === 'mine-open') { clearDrafts('mine-'); S.drafts['mine-open'] = ds; save(); renderCal(); setTimeout(() => scrollToEl($('#m-name'), innerHeight / 3), 50); }
   if (a === 'mine-cancel') { clearDrafts('mine-'); save(); renderCal(); }
   if (a === 'mine-save') {
     const name = $('#m-name').value.trim();
     if (!name) { toast('운동 이름을 적거나 골라 주세요'); return; }
-    const min = parseInt($('#m-min').value.replace(/D/g, ''), 10);
+    const min = parseInt($('#m-min').value.replace(/\D/g, ''), 10);
     const note = $('#m-note').value.trim();
     const item = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name };
     if (min > 0) item.min = min;
     if (note) item.note = note;
-    const list = [...mineOf(sel), item];
-    S.data.mine = S.data.mine || {}; S.data.mine[sel] = list;
+    const list = [...mineOf(ds), item];
+    S.data.mine = S.data.mine || {}; S.data.mine[ds] = list;
     clearDrafts('mine-'); save(); renderCal(); toast('추가했어요');
-    post({ mine: { date: sel, list } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
+    post({ mine: { date: ds, list } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
   }
   if (a === 'prev' || a === 'next') { view = new Date(view.getFullYear(), view.getMonth() + (a === 'next' ? 1 : -1), 1); renderCal(); }
-  if (a === 'edit') { editing = true; S.drafts['day-edit'] = sel; save(); renderCal(); }
+  if (a === 'edit') { clearDrafts('day-'); S.drafts['day-edit'] = ds; save(); renderCal(); }
   if (a === 'cancel') { stopEditing(); renderCal(); }
   if (a === 'save-day' || a === 'del-day') {
     const val = id => { const v = $(id).value.replace(/\D/g, ''); return v === '' ? undefined : Number(v); };
     let value = null;
     if (a === 'save-day') {
-      value = { ...(S.data.days[sel] || {}), min: val('#e-min'), steps: val('#e-steps') };
+      value = { ...(S.data.days[ds] || {}), min: val('#e-min'), steps: val('#e-steps') };
       delete value.at; delete value.manual;
       for (const k of Object.keys(value)) if (value[k] === undefined) delete value[k];
       if (!Object.keys(value).length) value = null;
     }
-    if (value) S.data.days[sel] = value; else delete S.data.days[sel];
+    if (value) S.data.days[ds] = value; else delete S.data.days[ds];
     stopEditing(); renderCal();
-    post({ day: { date: sel, value } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
+    post({ day: { date: ds, value } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
   }
   if (a === 'add-ib') {
     const n = id => { const v = $(id).value.trim().replace(',', '.'); const x = parseFloat(v); return isFinite(x) ? r1(x) : null; };
