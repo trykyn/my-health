@@ -37,13 +37,15 @@ export default {
 
     // 단축어에서 오는 오늘 기록
     if (kind === "h" && request.method === "POST") {
-      const body = await readBody(request);
+      const { body, raw, type } = await readBody(request);
+      // 단축어가 실제로 무엇을 보내는지 확인용: 마지막 요청 그대로 30일 보관
+      await env.STORE.put(`last:${key}`, JSON.stringify({ at: new Date().toISOString(), type, raw: raw.slice(0, 20000) }), { expirationTtl: 2592000 });
       const date = DATE_RE.test(String(body.date || "")) ? body.date : berlinToday();
       const data = await load();
       const day = { ...(data.days[date] || {}) };
       const min = num(body.minutes), kcal = num(body.kcal);
       // 걸음 수는 항상 정수: "8.432"(독일식 천 단위)도 8432 로
-      const steps = body.steps == null || body.steps === "" ? null : num(String(body.steps).replace(/\D/g, ""));
+      const steps = body.steps == null || body.steps === "" ? null : Array.isArray(body.steps) ? num(body.steps.map(x => String(x).replace(/\D/g, ""))) : num(String(body.steps).replace(/\D/g, ""));
       if (min != null) day.min = Math.round(min);
       if (kcal != null) day.kcal = Math.round(kcal);
       if (steps != null) day.steps = Math.round(steps);
@@ -53,7 +55,7 @@ export default {
       delete day.manual; // 워치 기록이 오면 직접 고친 표시는 없앰
       data.days[date] = day;
       await env.STORE.put(sk, JSON.stringify(data));
-      return new Response(`저장됨 ${date}: ${day.min ?? "-"}분 · ${day.kcal ?? "-"}kcal`, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+      return new Response(`저장됨 ${date}: ${day.min ?? "-"}분 · ${day.kcal ?? "-"}kcal · ${day.steps ?? "-"}걸음`, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
     }
 
     if (kind === "d" && request.method === "GET") return json(await load());
@@ -82,20 +84,21 @@ export default {
 // 단축어는 JSON 또는 양식(form)으로 보낼 수 있음
 async function readBody(request) {
   const type = request.headers.get("Content-Type") || "";
-  try {
-    if (type.includes("json")) return await request.json();
-    if (type.includes("form")) return Object.fromEntries(await request.formData());
-    const t = await request.text();
-    return t ? JSON.parse(t) : {};
-  } catch {
-    return {};
+  if (type.includes("multipart")) {
+    const o = Object.fromEntries(await request.formData());
+    return { body: o, raw: JSON.stringify(o), type };
   }
+  const raw = await request.text();
+  if (type.includes("urlencoded")) return { body: Object.fromEntries(new URLSearchParams(raw)), raw, type };
+  try { return { body: raw ? JSON.parse(raw) : {}, raw, type }; } catch { return { body: {}, raw, type }; }
 }
 
 // "45", 45, "320,5 kcal", "1.234", "1,234.5" 처럼 어떤 모양이든 숫자로. 없으면 null
 function num(v) {
   if (v == null || v === "") return null;
   if (typeof v === "number") return isFinite(v) ? v : null;
+  // 건강 샘플 목록을 그대로 보낸 경우: 모두 더함
+  if (Array.isArray(v)) { const xs = v.map(num).filter(x => x != null); return xs.length ? xs.reduce((a, b) => a + b, 0) : null; }
   let s = String(v).replace(/\s/g, "");
   const m = s.match(/-?[\d.,]+/);
   if (!m) return null;
