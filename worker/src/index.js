@@ -6,7 +6,7 @@
 //   POST /h/{키}   { minutes, steps, kcal?, workouts?, date? }  ← 단축어. 그날 값을 덮어씀(같은 날 여러 번 보내도 안전)
 //                  workouts = 오늘 Apple Watch 운동 샘플(한 줄에 하나) → days[날짜].watch
 //   GET  /d/{키}                                               → { days, inbody, gym, mine }
-//   POST /d/{키}   { inbody?, gym?, gymMeta?, gymSession?, day?, mine?, profile? }               ← 앱. 보낸 항목만 바꿈
+//   POST /d/{키}   { restore?, inbody?, gym?, gymMeta?, gymSession?, day?, mine?, profile? }  (restore = 백업 파일 전체)               ← 앱. 보낸 항목만 바꿈
 //                  mine = { date, list: [{ id, name, min?, kcal?, note? }] } 내가 적은 그날 운동 (빈 목록이면 지움)
 //
 // 키는 앱이 처음 열릴 때 만든 32자리 무작위 문자열. 키를 아는 사람만 읽고 쓸 수 있음.
@@ -75,7 +75,12 @@ export default {
       if (text.length > 2_000_000) return json({ error: "too_big" }, 413);
       let body;
       try { body = JSON.parse(text); } catch { return json({ error: "bad_json" }, 400); }
-      const data = await load();
+      let data = await load();
+      // 백업 파일로 되살리기: 기록 전체를 바꿈
+      if (body.restore && typeof body.restore === "object") {
+        const r = body.restore, obj = v => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
+        data = { days: obj(r.days), inbody: Array.isArray(r.inbody) ? r.inbody : [], gym: obj(r.gym), mine: obj(r.mine), profile: obj(r.profile) };
+      }
       if (Array.isArray(body.inbody)) data.inbody = body.inbody;
       if (body.gym && typeof body.gym === "object") data.gym = body.gym;
       // 헬스: 주간 계획·루틴·직접 추가한 운동 이름 (보낸 것만 바꿈)

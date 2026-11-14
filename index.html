@@ -270,6 +270,13 @@ ol.steps b { font-weight: 600; }
 .fig .at circle { fill: var(--ink); }
 .fig .at circle.pl { fill: none; stroke: var(--ink); stroke-width: 3; }
 .fig .at path.cb { stroke: var(--muted); stroke-width: 1; }
+.warn-card { box-shadow: inset 0 0 0 2px var(--accent), var(--shadow); }
+.wo li.exli { display: block; padding: 0; }
+.exrow { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 8px 0; }
+.exchart { padding: 0 0 10px; }
+.exchart svg { display: block; width: 100%; height: auto; }
+.exchart .axis { fill: var(--muted); font-size: 11px; }
+.exchart .vlab { fill: var(--ink); font-size: 12px; font-weight: 700; }
 #rest { position: fixed; left: 12px; right: 12px; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 6; max-width: 516px; margin: 0 auto;
   display: flex; align-items: center; gap: 10px; background: var(--ink); color: var(--bg); border-radius: 16px; padding: 10px 14px; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
 #rest b { font-size: 22px; font-weight: 800; min-width: 52px; }
@@ -407,6 +414,7 @@ function render() {
   if (S.tab === 'cal') renderCal();
   if (S.tab === 'ib') renderIb();
   if (S.tab === 'gym') renderGym();
+  else updateWakeLock();
 }
 
 const ARROW_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
@@ -433,6 +441,8 @@ function renderCal() {
   const neverSynced = !Object.values(S.data.days).some(r => r.at && !r.manual);
   $('#v-cal').innerHTML = `
     ${neverSynced ? `<div class="banner"><div><b>Apple Watch 연결하기</b>운동이 끝나면 여기로 바로 올라오게 설정해요.</div><button class="btn small" data-act="setup">설정 방법</button></div>` : ''}
+    ${unfinishedGym().length ? `<div class="banner"><div><b>${shortDate(unfinishedGym()[0])} 헬스를 아직 안 끝냈어요</b>끝내야 계획 체크와 오늘 한 운동에 들어가요.</div><button class="btn small" data-tab="gym">정리하기</button></div>` : ''}
+    ${!S.keySaved && !neverSynced ? `<div class="banner"><div><b>기록 지키기</b>연결 키를 저장해 두면 휴대폰을 바꿔도 기록을 되찾아요.</div><button class="btn small" data-act="setup">저장하기</button></div>` : ''}
     ${todayHero(today)}
     ${calendarCard(today)}
     ${sel !== today ? dayDetail(sel) : ''}`;
@@ -1184,7 +1194,7 @@ function sessionCard() {
     </div>`;
   }).join('');
   return `<div class="card">
-    <div class="wo-head"><h3>오늘 헬스 <span class="sub num" id="gym-elapsed" style="font-weight:500"></span></h3><button class="link" data-act="gym-cancel">기록 지우기</button></div>
+    <div class="wo-head"><h3>오늘 헬스 <span class="sub num" id="gym-elapsed" style="font-weight:500"></span><span class="sub" id="wake" hidden style="font-weight:500;font-size:12px"> · 화면 켜 둠</span></h3><button class="link" data-act="gym-cancel">기록 지우기</button></div>
     ${items || '<p class="sub wo-empty">아래에서 운동을 추가해요.</p>'}
     <button class="btn ghost" style="width:100%;margin-top:10px" data-act="picker">＋ 운동 추가</button>
     ${pickerOpen ? pickerHtml() : ''}
@@ -1210,6 +1220,32 @@ function routinesCard() {
     <button class="x" data-del-routine="${esc(r.id)}" aria-label="${esc(r.name)} 루틴 지우기">${X_ICON}</button></li>`).join('')}</ul></div>`;
 }
 
+// 운동 하나의 날짜별 최고 무게 그래프
+let openEx = null;
+function exChartHtml(n) {
+  const pts = Object.keys(G().sessions).sort().map(d => {
+    const it = (G().sessions[d].items || []).find(i => i.ex === n);
+    const ws = it ? it.sets.filter(x => x.done && +x.w > 0).map(x => +x.w) : [];
+    return ws.length ? { d, w: Math.max(...ws) } : null;
+  }).filter(Boolean);
+  if (pts.length < 2) return '<p class="sub" style="margin:0 0 10px;font-size:13px">두 번 이상 기록하면 그래프가 그려져요.</p>';
+  const W = 320, H = 130, L = 30, R = 14, T = 20, B = 22;
+  const vs = pts.map(p => p.w);
+  let lo = Math.min(...vs), hi = Math.max(...vs);
+  const pad = Math.max((hi - lo) * 0.2, 2); lo = Math.max(0, lo - pad); hi += pad;
+  const X = i => L + i * (W - L - R) / (pts.length - 1), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  const iMax = vs.lastIndexOf(Math.max(...vs)), lab = [...new Set([0, pts.length - 1, iMax])];
+  const step = niceStep((hi - lo) / 3), ticks = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) ticks.push(r1(v));
+  const kg = v => f1(v).replace('.0', '');
+  return `<div class="exchart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(n)} 무게 변화, 처음 ${vs[0]}kg 지금 ${vs.at(-1)}kg">
+    ${ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text class="axis num" x="${L - 5}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
+    <path d="${pts.map((p, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.w).toFixed(1)}`).join('')}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map((p, i) => `<circle cx="${X(i)}" cy="${Y(p.w)}" r="${i === iMax ? 5.5 : 3.5}" fill="${i === iMax ? 'var(--card)' : 'var(--accent)'}" stroke="var(--accent)" stroke-width="${i === iMax ? 3 : 0}"/>`).join('')}
+    ${lab.map(i => `<text class="vlab num" x="${Math.min(Math.max(X(i), L + 14), W - R - 14)}" y="${Y(pts[i].w) - 9}" text-anchor="middle">${kg(pts[i].w)}${i === iMax ? ' 최고' : ''}</text>`).join('')}
+    <text class="axis num" x="${L}" y="${H - 5}">${shortDate(pts[0].d)}</text><text class="axis num" x="${W - R}" y="${H - 5}" text-anchor="end">${shortDate(pts.at(-1).d)}</text>
+  </svg><p class="sub" style="margin:0;font-size:13px">${pts.length}번 · 처음보다 ${vs.at(-1) - vs[0] >= 0 ? '+' : '−'}${kg(Math.abs(vs.at(-1) - vs[0]))}kg</p></div>`;
+}
 function statsCard() {
   const now = new Date(), y = now.getFullYear(), m = now.getMonth();
   const inMonth = ds => { const d = parseYmd(ds); return d.getFullYear() === y && d.getMonth() === m; };
@@ -1234,13 +1270,15 @@ function statsCard() {
       <div class="tile"><b style="font-size:17px">${top ? esc(top[0]) : '–'}</b><span>가장 많이 한 운동${top ? ` · ${top[1]}번` : ''}</span></div>
     </div>
     ${rows.length ? `<h3 style="font-size:15px;font-weight:800;margin:14px 0 4px">운동별 최고 무게</h3>
-    <ul class="wo">${rows.map(([n, b]) => `<li>${figSvg(n, 36)}<span class="wo-name">${esc(n)}<span class="wo-note">지난번 ${f1(b.last).replace('.0', '')}kg · ${shortDate(b.date)}</span></span><b class="num">${f1(b.max).replace('.0', '')}<small class="sub"> kg</small></b></li>`).join('')}</ul>` : ''}
+    <p class="sub" style="margin:0 0 4px;font-size:13px">운동을 누르면 무게 변화를 보여 줘요</p>
+    <ul class="wo">${rows.map(([n, b]) => `<li class="exli"><button class="exrow" data-exc="${esc(n)}" aria-expanded="${openEx === n}">${figSvg(n, 36)}<span class="wo-name">${esc(n)}<span class="wo-note">지난번 ${f1(b.last).replace('.0', '')}kg · ${shortDate(b.date)}</span></span><b class="num">${f1(b.max).replace('.0', '')}<small class="sub"> kg</small></b></button>${openEx === n ? exChartHtml(n) : ''}</li>`).join('')}</ul>` : ''}
   </div>`;
 }
 
 function renderGym() {
-  $('#v-gym').innerHTML = planCard() + sessionCard() + routinesCard() + statsCard();
+  $('#v-gym').innerHTML = unfinishedCard() + planCard() + sessionCard() + routinesCard() + statsCard();
   tickRest();
+  updateWakeLock();
 }
 
 // 저장: 세트 기록은 그날 것 하나만, 계획·루틴은 따로
@@ -1252,6 +1290,19 @@ function saveSession(ds, now) {
   gymSaveT = setTimeout(() => post({}).catch(() => toast('인터넷 연결되면 저장돼요')), now ? 0 : 800);
 }
 const saveMeta = () => post({ gymMeta: { plan: G().plan, routines: G().routines, custom: G().custom } }).catch(() => toast('인터넷 연결되면 저장돼요'));
+
+// 헬스 기록 중(헬스 탭에서 아직 안 끝냄)에는 화면이 꺼지지 않게
+let wakeLock = null;
+async function updateWakeLock() {
+  const s = G().sessions[todayStr()];
+  const want = S.tab === 'gym' && !document.hidden && !!s && !s.end;
+  try {
+    if (want && !wakeLock && 'wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => (wakeLock = null)); }
+    if (!want && wakeLock) { const w = wakeLock; wakeLock = null; await w.release(); }
+  } catch { wakeLock = null; }
+  const el = $('#wake'); if (el) el.hidden = !wakeLock;
+}
+document.addEventListener('visibilitychange', updateWakeLock);
 
 // 휴식 타이머 (1분)
 let restEnd = 0, audioCtx = null;
@@ -1323,6 +1374,8 @@ function gymClick(t) {
     G().sessions[today] = { start: Date.now(), routine: r ? r.name : '', items: r ? r.ex.map(n => ({ ex: n, sets: lastSetsFor(n, today) })) : [] };
     pickerOpen = !r; saveSession(today, true); renderGym(); return true;
   }
+  if (a === 'gym-finish') return finishSession(t.dataset.date || today);
+  if (a === 'gym-cancel') return cancelSession(t.dataset.date || today);
   if (!s) return false;
   if (a === 'picker') { pickerOpen = !pickerOpen; renderGym(); if (pickerOpen) setTimeout(() => scrollToEl($('#picker'), 80), 30); return true; }
   if (t.dataset.pickEx) {
@@ -1357,32 +1410,48 @@ function gymClick(t) {
     if (old) old.ex = ex; else G().routines.push({ id: Date.now().toString(36), name: n, ex });
     s.routine = n; save(); saveMeta(); saveSession(today); renderGym(); toast(`'${n}' 루틴을 저장했어요`); return true;
   }
-  if (a === 'gym-finish') {
-    const guess = Math.min(300, Math.max(1, Math.round((Date.now() - s.start) / 60000)));
-    const mv = prompt('운동한 시간 (분)', guess);
-    if (mv == null) return true;
-    const kv = prompt('칼로리 (kcal, 모르면 비워 두세요)', s.kcal || '');
-    s.min = parseInt(String(mv).replace(/\D/g, ''), 10) || guess;
-    s.kcal = parseInt(String(kv || '').replace(/\D/g, ''), 10) || undefined;
-    s.end = Date.now(); restEnd = 0; pickerOpen = false;
-    // '오늘 한 운동'에 헬스로 넣기 (다시 끝내면 바꿔 씀)
-    const note = s.items.filter(i => i.sets.some(x => x.done)).map(i => isCardio(i.ex) ? `${i.ex} ${i.sets.filter(x => x.done).map(x => x.m + '분').join('')}` : `${i.ex} ${Math.max(0, ...i.sets.filter(x => x.done).map(x => +x.w || 0))}kg`).join(', ').slice(0, 300);
-    const list = mineOf(today).filter(x => !x.gym);
-    list.push({ id: 'gym' + today.replace(/-/g, ''), name: '헬스', min: s.min, kcal: s.kcal, note, gym: true });
-    S.data.mine = S.data.mine || {}; S.data.mine[today] = list;
-    S.pending = { ...(S.pending || {}), mine: { date: today, list } };
-    saveSession(today, true); renderGym(); toast('수고했어요! 오늘 한 운동에 넣었어요'); return true;
-  }
   if (a === 'gym-reopen') { delete s.end; saveSession(today, true); renderGym(); return true; }
-  if (a === 'gym-cancel') {
-    if (!confirm('오늘 헬스 기록을 지울까요?')) return true;
-    delete G().sessions[today]; restEnd = 0; pickerOpen = false;
-    const list = mineOf(today).filter(x => !x.gym);
-    if (list.length) S.data.mine[today] = list; else delete S.data.mine[today];
-    S.pending = { ...(S.pending || {}), mine: { date: today, list } };
-    saveSession(today, true); renderGym(); return true;
-  }
   return false;
+}
+// 헬스 끝내기: 그날 '오늘 한 운동'에 헬스로 넣음. 지난날 것은 세트 수로 시간을 어림함
+function finishSession(ds) {
+  const s = G().sessions[ds]; if (!s) return true;
+  const sets = s.items.reduce((n, i) => n + i.sets.filter(x => x.done).length, 0);
+  const guess = ds === todayStr() ? Math.min(300, Math.max(1, Math.round((Date.now() - s.start) / 60000))) : Math.min(120, Math.max(20, sets * 3));
+  const mv = prompt(`${ds === todayStr() ? '' : shortDate(ds) + ' '}운동한 시간 (분)`, s.min || guess);
+  if (mv == null) return true;
+  const kv = prompt('칼로리 (kcal, 모르면 비워 두세요)', s.kcal || '');
+  s.min = parseInt(String(mv).replace(/\D/g, ''), 10) || guess;
+  s.kcal = parseInt(String(kv || '').replace(/\D/g, ''), 10) || undefined;
+  s.end = Date.now();
+  if (ds === todayStr()) { restEnd = 0; pickerOpen = false; }
+  const note = s.items.filter(i => i.sets.some(x => x.done)).map(i => isCardio(i.ex) ? `${i.ex} ${i.sets.filter(x => x.done).map(x => x.m + '분').join('')}` : `${i.ex} ${Math.max(0, ...i.sets.filter(x => x.done).map(x => +x.w || 0))}kg`).join(', ').slice(0, 300);
+  const list = mineOf(ds).filter(x => !x.gym);
+  list.push({ id: 'gym' + ds.replace(/-/g, ''), name: '헬스', min: s.min, kcal: s.kcal, note, gym: true });
+  S.data.mine = S.data.mine || {}; S.data.mine[ds] = list;
+  S.pending = { ...(S.pending || {}), mine: { date: ds, list } };
+  saveSession(ds, true); renderGym();
+  toast(ds === todayStr() ? '수고했어요! 오늘 한 운동에 넣었어요' : `${shortDate(ds)} 헬스를 정리했어요`);
+  return true;
+}
+function cancelSession(ds) {
+  if (!G().sessions[ds]) return true;
+  if (!confirm(`${ds === todayStr() ? '오늘' : shortDate(ds)} 헬스 기록을 지울까요?`)) return true;
+  delete G().sessions[ds];
+  if (ds === todayStr()) { restEnd = 0; pickerOpen = false; }
+  const list = mineOf(ds).filter(x => !x.gym);
+  if (list.length) S.data.mine[ds] = list; else delete S.data.mine[ds];
+  S.pending = { ...(S.pending || {}), mine: { date: ds, list } };
+  saveSession(ds, true); renderGym(); return true;
+}
+const unfinishedGym = () => Object.keys(G().sessions).filter(d => d < todayStr() && !G().sessions[d].end).sort();
+function unfinishedCard() {
+  return unfinishedGym().map(d => {
+    const s = G().sessions[d], sets = s.items.reduce((n, i) => n + i.sets.filter(x => x.done).length, 0);
+    return `<div class="card warn-card"><h2>${longDate(d)} 헬스를 안 끝냈어요</h2>
+      <p class="sub" style="margin:0 0 10px">운동 ${s.items.length}개 · 세트 ${sets}개 기록됨${s.items.length ? ' · ' + s.items.slice(0, 3).map(i => esc(i.ex)).join(', ') : ''}</p>
+      <div class="inline">${sets ? `<button class="btn small" data-act="gym-finish" data-date="${d}">끝내기</button>` : ''}<button class="btn small ghost" data-act="gym-cancel" data-date="${d}">지우기</button></div></div>`;
+  }).join('');
 }
 function gymClickAny(t) {
   if (t.dataset.delRoutine) {
@@ -1390,6 +1459,7 @@ function gymClickAny(t) {
     if (r && confirm(`'${r.name}' 루틴을 지울까요?`)) { G().routines = G().routines.filter(x => x !== r); save(); saveMeta(); renderGym(); }
     return true;
   }
+  if (t.dataset.exc) { openEx = openEx === t.dataset.exc ? null : t.dataset.exc; renderGym(); return true; }
   if (t.dataset.act === 'rest-skip') { restEnd = 0; tickRest(); return true; }
   if (t.dataset.act === 'rest-add') { restEnd += 30000; tickRest(); return true; }
   return gymClick(t);
@@ -1435,9 +1505,14 @@ function renderSettings() {
       <div class="inline"><label class="fld">분<input id="goal" inputmode="numeric" value="${S.goal}"></label><button class="btn small" data-act="goal">저장</button></div>
     </div>
     <div class="card">
-      <h2>다른 기기에서 같이 보기</h2>
-      <p class="sub" style="margin:0 0 8px">연결 키를 다른 기기 앱에 넣으면 같은 기록을 봐요. 휴대폰을 바꿨을 때도 이 키로 되살려요.</p>
+      <h2>기록 지키기</h2>
+      <p class="sub" style="margin:0 0 8px">모든 기록은 아래 <b>연결 키</b>에 묶여 있어요. 휴대폰을 바꾸거나 앱을 지웠다 다시 깔면 이 키가 있어야 기록을 되찾아요. 메모 앱에 꼭 저장해 두세요.</p>
       <div class="url-box">${esc(S.key)}</div>
+      <div class="inline" style="margin-bottom:12px;flex-wrap:wrap"><button class="btn small" data-act="copykey">연결 키 복사</button><button class="btn small ghost" data-act="backup-save">백업 파일 저장</button><label class="btn small ghost" for="restore-file">백업 불러오기</label></div>
+      <input type="file" id="restore-file" accept="application/json,.json" hidden>
+      ${S.backupAt ? `<p class="sub" style="margin:0 0 12px;font-size:13px">마지막 백업: ${new Date(S.backupAt).toLocaleDateString('ko-KR')}</p>` : ''}
+      <h2 style="margin-top:4px">다른 기기에서 같이 보기</h2>
+      <p class="sub" style="margin:0 0 8px">위 연결 키를 다른 기기 앱에 넣으면 같은 기록을 봐요.</p>
       <div class="inline"><label class="fld">다른 연결 키 넣기<input id="newkey" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="32자리 키"></label><button class="btn small ghost" data-act="usekey">바꾸기</button></div>
     </div>`;
 }
@@ -1540,6 +1615,20 @@ document.addEventListener('click', async ev => {
   }
   if (a === 'ib-more') { ibShowAll = !ibShowAll; renderIb(); }
   if (a === 'goal') { const g = parseInt($('#goal').value, 10); if (g > 0 && g < 600) { S.goal = g; save(); render(); toast('저장했어요'); } }
+  if (a === 'copykey') {
+    try { await navigator.clipboard.writeText(S.key); S.keySaved = true; save(); toast('연결 키를 복사했어요. 메모 앱에 붙여 넣어 두세요'); render(); }
+    catch { toast('키를 길게 눌러 복사하세요'); }
+  }
+  if (a === 'backup-save') {
+    const name = `내건강-백업-${todayStr()}.json`;
+    const blob = new Blob([JSON.stringify({ app: 'my-health', saved: new Date().toISOString(), key: S.key, data: S.data })], { type: 'application/json' });
+    try {
+      const file = new File([blob], name, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: name });
+      else { const l = document.createElement('a'); l.href = URL.createObjectURL(blob); l.download = name; l.click(); setTimeout(() => URL.revokeObjectURL(l.href), 5000); }
+      S.backupAt = Date.now(); S.keySaved = true; save(); renderSettings(); render(); toast('백업 파일을 만들었어요');
+    } catch (e) { if (!e || e.name !== 'AbortError') toast('백업을 만들지 못했어요'); }
+  }
   if (a === 'usekey') {
     const k = $('#newkey').value.trim();
     if (!/^[A-Za-z0-9]{24,64}$/.test(k)) { toast('키 모양이 맞지 않아요'); return; }
@@ -1547,6 +1636,19 @@ document.addEventListener('click', async ev => {
     S.key = k; S.data = { days: {}, inbody: [], gym: {}, mine: {} }; S.pending = null; save();
     $('#settings').close(); render(); sync();
   }
+});
+// 백업 불러오기
+document.addEventListener('change', async e => {
+  if (e.target.id !== 'restore-file' || !e.target.files[0]) return;
+  try {
+    const b = JSON.parse(await e.target.files[0].text());
+    if (!b || b.app !== 'my-health' || !b.data) throw new Error('bad');
+    const n = (b.data.inbody || []).length, d = Object.keys(b.data.mine || {}).length;
+    if (!confirm(`${new Date(b.saved).toLocaleDateString('ko-KR')} 백업으로 되돌릴까요?\n(인바디 ${n}개, 운동 기록 ${d}일)\n지금 기록은 이 백업으로 바뀌어요.`)) return;
+    S.data = Object.assign({ days: {}, inbody: [], gym: {}, mine: {} }, b.data); save(); render();
+    await post({ restore: b.data }); render(); toast('백업에서 되살렸어요');
+  } catch { toast('백업 파일을 읽지 못했어요'); }
+  finally { e.target.value = ''; }
 });
 for (const type of ['input', 'change']) document.addEventListener(type, e => {
   const k = e.target.dataset && e.target.dataset.draft;
