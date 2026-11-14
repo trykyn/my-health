@@ -200,6 +200,10 @@ S.data = Object.assign({ days: {}, inbody: [], gym: {} }, S.data);
 S.goal = S.goal || 30;
 S.tab = S.tab || 'cal';
 S.metric = S.metric || 'w';
+// 적다 만 입력칸 (다른 앱에 다녀오거나 앱이 다시 켜져도 그대로 남게)
+S.drafts = S.drafts || {};
+const draft = (k, def = '') => esc(S.drafts[k] ?? def);
+const clearDrafts = prefix => { for (const k of Object.keys(S.drafts)) if (k.startsWith(prefix)) delete S.drafts[k]; };
 const save = () => { try { localStorage.setItem(LS, JSON.stringify(S)); } catch {} };
 save();
 
@@ -220,6 +224,8 @@ const fmtInt = n => Number(n).toLocaleString('ko-KR');
 let view = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })();
 let sel = todayStr();
 let editing = false;
+if (S.drafts['day-edit']) { sel = S.drafts['day-edit']; editing = true; }
+const stopEditing = () => { editing = false; clearDrafts('day-'); save(); };
 
 // ── 서버와 주고받기 ──
 let syncing = false;
@@ -238,7 +244,8 @@ async function sync() {
     S.data = Object.assign({ days: {}, inbody: [], gym: {} }, d);
     S.synced = Date.now();
     save();
-    render();
+    // 입력 중이면 화면을 다시 그리지 않음 (키보드가 닫히지 않게)
+    if (!(document.activeElement && document.activeElement.matches('input'))) render();
   } catch { /* 오프라인: 휴대폰에 있는 복사본으로 계속 */ }
   finally { syncing = false; }
 }
@@ -341,8 +348,8 @@ function dayDetail(ds) {
   if (ib) body += `<p class="sub" style="margin:10px 0 0">인바디 · ${[ib.w != null && f1(ib.w) + 'kg', ib.m != null && '근육 ' + f1(ib.m) + '%', ib.f != null && '체지방 ' + f1(ib.f) + '%'].filter(Boolean).join(' · ')}</p>`;
   const form = editing ? `
     <div class="edit-row">
-      <label class="fld">운동(분)<input id="e-min" inputmode="numeric" value="${rec?.min ?? ''}"></label>
-      <label class="fld">걸음<input id="e-steps" inputmode="numeric" value="${rec?.steps ?? ''}"></label>
+      <label class="fld">운동(분)<input id="e-min" data-draft="day-min" inputmode="numeric" value="${draft('day-min', rec?.min ?? '')}"></label>
+      <label class="fld">걸음<input id="e-steps" data-draft="day-steps" inputmode="numeric" value="${draft('day-steps', rec?.steps ?? '')}"></label>
     </div>
     <div class="detail-foot"><button class="btn small ghost" data-act="del-day">지우기</button>
       <span style="display:flex;gap:8px"><button class="btn small ghost" data-act="cancel">취소</button><button class="btn small" data-act="save-day">저장</button></span></div>` : `
@@ -393,10 +400,10 @@ function renderIb() {
     <div class="card">
       <h2>새 결과 적기</h2>
       <div class="form-grid">
-        <label class="fld">잰 날<input type="date" id="i-date" value="${todayStr()}" max="${todayStr()}"></label>
-        <label class="fld">몸무게 (kg)<input id="i-w" inputmode="decimal" placeholder="예: 62.4"></label>
-        <label class="fld">근육량 (%)<input id="i-m" inputmode="decimal" placeholder="예: 38.5"></label>
-        <label class="fld">체지방 (%)<input id="i-f" inputmode="decimal" placeholder="예: 27.0"></label>
+        <label class="fld">잰 날<input type="date" id="i-date" data-draft="ib-date" value="${draft('ib-date', todayStr())}" max="${todayStr()}"></label>
+        <label class="fld">몸무게 (kg)<input id="i-w" data-draft="ib-w" value="${draft('ib-w')}" inputmode="decimal" placeholder="예: 62.4"></label>
+        <label class="fld">근육량 (%)<input id="i-m" data-draft="ib-m" value="${draft('ib-m')}" inputmode="decimal" placeholder="예: 38.5"></label>
+        <label class="fld">체지방 (%)<input id="i-f" data-draft="ib-f" value="${draft('ib-f')}" inputmode="decimal" placeholder="예: 27.0"></label>
       </div>
       <button class="btn" style="width:100%" data-act="add-ib">저장</button>
     </div>
@@ -535,8 +542,8 @@ function renderSettings() {
 // ── 누르기 ──
 document.addEventListener('click', async ev => {
   const t = ev.target.closest('button'); if (!t) return;
-  if (t.dataset.tab) { S.tab = t.dataset.tab; editing = false; save(); render(); scrollTo(0, 0); return; }
-  if (t.dataset.day) { sel = t.dataset.day; editing = false; renderCal(); return; }
+  if (t.dataset.tab) { S.tab = t.dataset.tab; stopEditing(); render(); scrollTo(0, 0); return; }
+  if (t.dataset.day) { sel = t.dataset.day; stopEditing(); renderCal(); return; }
   if (t.dataset.metric) { S.metric = t.dataset.metric; save(); renderIb(); return; }
   if (t.dataset.delIb) {
     const e = S.data.inbody.find(x => x.id === t.dataset.delIb);
@@ -546,8 +553,8 @@ document.addEventListener('click', async ev => {
   }
   const a = t.dataset.act;
   if (a === 'prev' || a === 'next') { view = new Date(view.getFullYear(), view.getMonth() + (a === 'next' ? 1 : -1), 1); renderCal(); }
-  if (a === 'edit') { editing = true; renderCal(); }
-  if (a === 'cancel') { editing = false; renderCal(); }
+  if (a === 'edit') { editing = true; S.drafts['day-edit'] = sel; save(); renderCal(); }
+  if (a === 'cancel') { stopEditing(); renderCal(); }
   if (a === 'save-day' || a === 'del-day') {
     const val = id => { const v = $(id).value.replace(/\D/g, ''); return v === '' ? undefined : Number(v); };
     let value = null;
@@ -558,7 +565,7 @@ document.addEventListener('click', async ev => {
       if (!Object.keys(value).length) value = null;
     }
     if (value) S.data.days[sel] = value; else delete S.data.days[sel];
-    editing = false; save(); renderCal();
+    stopEditing(); renderCal();
     post({ day: { date: sel, value } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
   }
   if (a === 'add-ib') {
@@ -566,7 +573,7 @@ document.addEventListener('click', async ev => {
     const date = $('#i-date').value || todayStr();
     const e = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), date, w: n('#i-w'), m: n('#i-m'), f: n('#i-f') };
     if (e.w == null && e.m == null && e.f == null) { toast('숫자를 하나 이상 적어 주세요'); return; }
-    S.data.inbody.push(e); save(); renderIb(); toast('저장했어요');
+    S.data.inbody.push(e); clearDrafts('ib-'); save(); renderIb(); toast('저장했어요');
     saveSoon({ inbody: S.data.inbody });
   }
   if (a === 'setup') { renderSettings(); $('#settings').showModal(); }
@@ -583,6 +590,10 @@ document.addEventListener('click', async ev => {
     S.key = k; S.data = { days: {}, inbody: [], gym: {} }; S.pending = null; save();
     $('#settings').close(); render(); sync();
   }
+});
+for (const type of ['input', 'change']) document.addEventListener(type, e => {
+  const k = e.target.dataset && e.target.dataset.draft;
+  if (k) { S.drafts[k] = e.target.value; save(); }
 });
 $('#openSettings').addEventListener('click', () => { renderSettings(); $('#settings').showModal(); });
 $('#settings').addEventListener('click', e => { if (e.target === $('#settings')) $('#settings').close(); });
