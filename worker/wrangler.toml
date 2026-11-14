@@ -1,0 +1,8 @@
+name = "my-health-sync"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# 내 건강 기록 저장소: data:{연결 키} → { days, inbody, gym }
+kv_namespaces = [
+  { binding = "STORE", id = "1a254c2c00e04739b5b213b8051a0343" }
+]
