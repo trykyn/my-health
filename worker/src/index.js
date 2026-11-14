@@ -37,7 +37,9 @@ export default {
 
     // 단축어에서 오는 오늘 기록
     if (kind === "h" && request.method === "POST") {
-      const { body, raw, type } = await readBody(request);
+      const { body: rawBody, raw, type } = await readBody(request);
+      // 아이폰이 첫 글자를 대문자로 바꿔도 괜찮게 (Kcal, Steps → kcal, steps)
+      const body = Object.fromEntries(Object.entries(rawBody || {}).map(([k, v]) => [k.trim().toLowerCase(), v]));
       // 단축어가 실제로 무엇을 보내는지 확인용: 마지막 요청 그대로 30일 보관
       await env.STORE.put(`last:${key}`, JSON.stringify({ at: new Date().toISOString(), type, raw: raw.slice(0, 20000) }), { expirationTtl: 2592000 });
       const date = DATE_RE.test(String(body.date || "")) ? body.date : berlinToday();
