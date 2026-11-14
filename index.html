@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#f2f4f1" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#111513" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fff3ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c1210" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="내 건강">
 <link rel="manifest" href="manifest.webmanifest">
@@ -12,19 +12,21 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>내 건강</title>
 <style>
-/* 모양: 연한 바탕, 흰 카드, 초록 하나. 좋아진 변화 = 초록, 나빠진 변화 = 빨강 (항상 ▲▼ 화살표와 함께) */
+/* 모양 (시안 C · 코랄 파스텔): 크림빛 바탕, 흰 카드, 산호색 하나, 둥근 모서리.
+   변화 표시: 좋아짐 = 산호색, 나빠짐 = 회색 (빨강이 주제색이라 '나쁨'으로 쓰지 않음). 항상 ▲▼ 화살표와 함께 */
 :root {
-  --bg: #f2f4f1; --card: #ffffff; --ink: #151a17; --muted: #5f6a64; --line: #e3e7e3; --field: #f5f7f5;
-  --accent: #13875c; --accent-ink: #ffffff; --soft: #e2f3ea; --track: #e4e9e5;
-  --good: #13875c; --bad: #c4362b; --grid: #e8ece9;
-  --shadow: 0 1px 2px rgba(21, 26, 23, .06), 0 4px 14px rgba(21, 26, 23, .04);
+  --bg: #fff3ee; --card: #ffffff; --ink: #3b2320; --muted: #8a6b64; --line: #f5dfd8; --field: #fff0eb;
+  --accent: #eb5a50; --accent-ink: #ffffff; --soft: #ffe5de; --track: #fbdcd5;
+  --good: #d14b41; --bad: #8e817d; --grid: #f8e6e0;
+  --r: 22px; --r-sm: 16px;
+  --shadow: 0 1px 2px rgba(59, 35, 32, .05), 0 6px 18px rgba(235, 90, 80, .06);
   --sans: system-ui, -apple-system, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111513; --card: #1b201d; --ink: #eef2ef; --muted: #a0aba5; --line: #2b322e; --field: #232925;
-    --accent: #4fd197; --accent-ink: #08281a; --soft: #19332a; --track: #2b332e;
-    --good: #4fd197; --bad: #ff8a7a; --grid: #262d29;
+    --bg: #1c1210; --card: #2a1c19; --ink: #fbede8; --muted: #c4a49c; --line: #3d2a26; --field: #34231f;
+    --accent: #ff7a6e; --accent-ink: #2a0c08; --soft: #46241f; --track: #46302b;
+    --good: #ff8a7f; --bad: #a8968f; --grid: #36241f;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3);
   }
 }
@@ -40,16 +42,16 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 
 header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .date { margin: 0 0 2px; font-size: 14px; color: var(--muted); }
-h1 { font-size: 30px; line-height: 1.15; letter-spacing: -.02em; margin: 0; }
+h1 { font-size: 30px; font-weight: 800; line-height: 1.15; letter-spacing: -.02em; margin: 0; }
 .icon-btn { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--card); box-shadow: var(--shadow); color: var(--muted); }
 .icon-btn svg { width: 22px; height: 22px; }
 
-.card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px; }
-.card h2 { font-size: 17px; margin: 0 0 10px; }
+.card { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px; }
+.card h2 { font-size: 17px; font-weight: 800; margin: 0 0 10px; }
 .sub { color: var(--muted); font-size: 14px; }
-.btn { flex: none; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 18px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn { flex: none; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 18px; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .btn.ghost { background: var(--field); color: var(--ink); }
-.btn.small { min-height: 36px; padding: 0 12px; font-size: 15px; border-radius: 10px; }
+.btn.small { min-height: 36px; padding: 0 14px; font-size: 15px; border-radius: 12px; }
 
 /* 아래 탭 막대 */
 nav.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; justify-content: center;
@@ -61,53 +63,72 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 
 /* ── 달력 ── */
 .month-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.month-head h2 { margin: 0; font-size: 20px; }
+.month-head h2 { margin: 0; font-size: 20px; font-weight: 800; }
 .month-head .arrows { display: flex; gap: 6px; }
 .month-head .arrows button { width: 38px; height: 38px; border-radius: 50%; background: var(--field); display: grid; place-items: center; }
 .month-head .arrows svg { width: 20px; height: 20px; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-.stat { background: var(--field); border-radius: 12px; padding: 8px 10px; }
-.stat b { display: block; font-size: 17px; line-height: 1.3; white-space: nowrap; }
+.stat { background: var(--field); border-radius: var(--r-sm); padding: 8px 10px; }
+.stat b { display: block; font-weight: 800; font-size: 17px; line-height: 1.3; white-space: nowrap; }
 .stat span { font-size: 12px; color: var(--muted); }
 .wk, .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .wk { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 2px; }
-.wk span:nth-child(7) { color: var(--bad); }
-.day { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 0 3px; border-radius: 12px; min-height: 66px; }
+.wk span:nth-child(7) { color: var(--accent); }
+.day { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 0 3px; border-radius: var(--r-sm); min-height: 66px; }
 .day .dn { font-size: 13px; line-height: 1.2; color: var(--muted); }
 .day.today .dn { background: var(--accent); color: var(--accent-ink); border-radius: 9px; padding: 0 6px; font-weight: 700; }
 .day.sel { background: var(--soft); }
 .day.future { opacity: .45; }
 .day svg.ring { width: 30px; height: 30px; transform: rotate(-90deg); }
 .day .dm { font-size: 11px; line-height: 1.1; color: var(--ink); font-weight: 600; min-height: 12px; }
-.day .ib { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); opacity: .55; }
+.day .ib { position: absolute; top: 14px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); opacity: .55; }
 .legend-line { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
 .legend-line i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); opacity: .55; margin-right: 5px; vertical-align: 2px; }
-.banner { display: flex; gap: 12px; align-items: center; background: var(--soft); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; font-size: 15px; }
+.banner { display: flex; gap: 12px; align-items: center; background: var(--soft); border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 14px; font-size: 15px; }
 .banner b { display: block; }
 .banner .btn { flex: none; margin-left: auto; }
 .tiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
-.tile { border-radius: 12px; background: var(--field); padding: 10px; }
-.tile b { display: block; font-size: 22px; line-height: 1.2; }
+.tile { border-radius: var(--r-sm); background: var(--field); padding: 10px; }
+.tile b { display: block; font-weight: 800; font-size: 22px; line-height: 1.2; }
 .tile b small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 2px; }
 .tile span { font-size: 12px; color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .chip { font-size: 13px; padding: 3px 10px; border-radius: 99px; background: var(--soft); color: var(--ink); }
+.chip.pick { font-size: 14px; padding: 6px 12px; }
+.chip.pick.on { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+/* 운동 목록 (워치 / 내가 추가) */
+.wo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; }
+.wo-head h3 { margin: 0; font-size: 16px; font-weight: 800; }
+.wo { list-style: none; margin: 6px 0 0; padding: 0; }
+.wo li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.wo li:first-child { border-top: 0; }
+.wo-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.wo-dot.watch { background: transparent; box-shadow: inset 0 0 0 3px var(--accent); }
+.wo-name { flex: 1; min-width: 0; }
+.wo-note { display: block; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.wo-empty { margin: 4px 0 0; font-size: 14px; }
+.wo-sep { height: 1px; background: var(--line); margin: 14px 0 10px; }
+.wo .x { flex: none; width: 28px; height: 28px; border-radius: 50%; color: var(--muted); display: grid; place-items: center; }
+.wo .x svg { width: 16px; height: 16px; }
+.mine-form { margin-top: 8px; padding-top: 6px; }
+.day .my { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.legend-line i.lg-my { background: var(--accent); opacity: 1; }
 .detail-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
 .edit-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
 
 /* 입력칸 */
 .fld { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 13px; color: var(--muted); }
-.fld input { width: 100%; min-width: 0; height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--field); font-size: 17px; color: var(--ink); }
+.fld input { width: 100%; min-width: 0; height: 44px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--field); font-size: 17px; color: var(--ink); }
 .fld input[type=date] { display: block; max-width: 100%; -webkit-appearance: none; appearance: none; line-height: 42px; }
 .fld input[type=date]::-webkit-date-and-time-value { text-align: left; }
 .fld input:focus { outline: 0; border-color: var(--accent); }
 
 /* ── 인바디 ── */
 .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
-.metric { text-align: left; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 12px 12px 10px; border: 2px solid transparent; }
+.metric { text-align: left; background: var(--card); border-radius: var(--r-sm); box-shadow: var(--shadow); padding: 12px 12px 10px; border: 2px solid transparent; }
 .metric.on { border-color: var(--accent); }
 .metric .lab { font-size: 13px; color: var(--muted); }
-.metric .val { font-size: 24px; font-weight: 700; line-height: 1.2; letter-spacing: -.01em; }
+.metric .val { font-size: 24px; font-weight: 800; line-height: 1.2; letter-spacing: -.01em; }
 .metric .val small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 1px; }
 .delta { font-size: 13px; font-weight: 600; white-space: nowrap; }
 .delta.good { color: var(--good); } .delta.bad { color: var(--bad); } .delta.same { color: var(--muted); }
@@ -196,7 +217,7 @@ const WD_SUN = ['일', '월', '화', '수', '목', '금', '토'];
 // ── 저장 상태 ──
 const S = (() => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } })();
 if (!S.key) S.key = newKey();
-S.data = Object.assign({ days: {}, inbody: [], gym: {} }, S.data);
+S.data = Object.assign({ days: {}, inbody: [], gym: {}, mine: {} }, S.data);
 S.goal = S.goal || 30;
 S.tab = S.tab || 'cal';
 S.metric = S.metric || 'w';
@@ -241,7 +262,7 @@ async function sync() {
     if (!r.ok) throw new Error(r.status);
     const d = await r.json();
     if (S.pending) return; // 받는 사이에 새로 적은 게 있으면 이번 것은 버림
-    S.data = Object.assign({ days: {}, inbody: [], gym: {} }, d);
+    S.data = Object.assign({ days: {}, inbody: [], gym: {}, mine: {} }, d);
     S.synced = Date.now();
     save();
     // 입력 중이면 화면을 다시 그리지 않음 (키보드가 닫히지 않게)
@@ -263,7 +284,7 @@ async function flush() {
   if (!r.ok) throw new Error(r.status);
   const data = await r.json();
   // 보내는 동안 또 바뀐 게 없을 때만 서버 값을 받아들임 (있으면 다음 차례에 그것까지 보냄)
-  if (S.pending === send) { S.pending = null; S.data = Object.assign({ days: {}, inbody: [], gym: {} }, data); }
+  if (S.pending === send) { S.pending = null; S.data = Object.assign({ days: {}, inbody: [], gym: {}, mine: {} }, data); }
   save();
 }
 const saveSoon = body => post(body).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
@@ -298,6 +319,10 @@ function ring(min) {
   </svg>`;
 }
 
+// 그날 운동한 시간: 워치 기록과 내가 추가한 운동 중 큰 쪽 (워치를 차고 한 운동을 또 적어도 두 번 세지 않게)
+const mineOf = ds => (S.data.mine && S.data.mine[ds]) || [];
+const dayMin = ds => Math.max((S.data.days[ds] || {}).min || 0, mineOf(ds).reduce((a, x) => a + (x.min || 0), 0));
+
 function renderCal() {
   const D = S.data.days, y = view.getFullYear(), m = view.getMonth();
   const first = new Date(y, m, 1), off = (first.getDay() + 6) % 7, n = new Date(y, m + 1, 0).getDate();
@@ -306,13 +331,14 @@ function renderCal() {
   let cells = '', active = 0, sumMin = 0, sumSteps = 0, stepDays = 0;
   for (let i = 0; i < off; i++) cells += '<span></span>';
   for (let d = 1; d <= n; d++) {
-    const ds = ymd(new Date(y, m, d)), rec = D[ds] || {}, min = rec.min || 0;
-    if (min > 0) { active++; sumMin += min; }
+    const ds = ymd(new Date(y, m, d)), rec = D[ds] || {}, min = dayMin(ds), mine = mineOf(ds).length;
+    if (min > 0 || mine) active++;
+    sumMin += min;
     if (rec.steps > 0) { sumSteps += rec.steps; stepDays++; }
     const cls = ['day', ds === today && 'today', ds === sel && 'sel', ds > today && 'future'].filter(Boolean).join(' ');
-    cells += `<button class="${cls}" data-day="${ds}" aria-label="${longDate(ds)}${min ? `, 운동 ${min}분` : ''}">
+    cells += `<button class="${cls}" data-day="${ds}" aria-label="${longDate(ds)}${min ? `, 운동 ${min}분` : ''}${mine ? `, 직접 추가한 운동 ${mine}개` : ''}">
       <span class="dn num">${d}</span>${ds > today ? '<svg class="ring"></svg>' : ring(min)}
-      <span class="dm num">${min ? min + '분' : ''}</span>${ibDates.has(ds) ? '<i class="ib"></i>' : ''}</button>`;
+      <span class="dm num">${min ? min + '분' : ''}</span>${mine ? '<i class="my"></i>' : ''}${ibDates.has(ds) ? '<i class="ib"></i>' : ''}</button>`;
   }
   const hours = Math.floor(sumMin / 60), mins = sumMin % 60;
   const neverSynced = !Object.values(D).some(r => r.at && !r.manual);
@@ -331,20 +357,34 @@ function renderCal() {
       </div>
       <div class="wk">${WD.map(w => `<span>${w}</span>`).join('')}</div>
       <div class="grid" id="grid">${cells}</div>
-      <div class="legend-line"><span>링 = 하루 목표 ${S.goal}분 중 채운 만큼</span><span><i></i>인바디 잰 날</span></div>
+      <div class="legend-line"><span>링 = 하루 목표 ${S.goal}분 중 채운 만큼</span><span><i class="lg-my"></i>직접 추가한 운동</span><span><i></i>인바디 잰 날</span></div>
     </div>
     ${dayDetail(sel)}`;
 }
 
+// 워치 운동 이름: 영어로 오면 한국어로 (모르는 이름은 그대로)
+const WORKOUT_KO = [
+  [/traditional strength/i, '근력 운동'], [/functional strength/i, '기능성 근력 운동'], [/core/i, '코어 운동'],
+  [/high intensity|hiit/i, '고강도 인터벌'], [/outdoor walk/i, '실외 걷기'], [/indoor walk/i, '실내 걷기'], [/walk/i, '걷기'],
+  [/outdoor run/i, '실외 달리기'], [/indoor run/i, '실내 달리기'], [/run/i, '달리기'], [/hik/i, '하이킹'],
+  [/outdoor cycl/i, '실외 사이클'], [/indoor cycl/i, '실내 사이클'], [/cycl/i, '사이클'], [/elliptical/i, '일립티컬'],
+  [/rowing/i, '로잉'], [/stair/i, '계단 오르기'], [/yoga/i, '요가'], [/pilates/i, '필라테스'], [/pool swim/i, '수영(실내)'],
+  [/open water/i, '수영(실외)'], [/swim/i, '수영'], [/dance/i, '댄스'], [/cool ?down/i, '쿨다운'], [/flexibility|stretch/i, '스트레칭'],
+  [/mind/i, '마음 챙김'], [/tennis/i, '테니스'], [/badminton/i, '배드민턴'], [/^other$/i, '기타'],
+];
+const workoutName = x => { for (const [re, ko] of WORKOUT_KO) if (re.test(x)) return ko; return x; };
+const QUICK = ['헬스', 'PT', '걷기', '러닝', '요가', '필라테스', '수영', '자전거', '스트레칭'];
+
 function dayDetail(ds) {
-  const rec = S.data.days[ds], ib = S.data.inbody.find(e => e.date === ds);
+  const rec = S.data.days[ds], ib = S.data.inbody.find(e => e.date === ds), mine = mineOf(ds);
   const has = rec && (rec.min != null || rec.kcal != null || rec.steps != null);
+  const future = ds > todayStr();
   const t = (v, unit, lab) => `<div class="tile"><b class="num">${v == null ? '–' : fmtInt(v)}<small>${unit}</small></b><span>${lab}</span></div>`;
   const when = rec && rec.at ? new Date(rec.at) : null;
+  const hm = d => `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   let body = has
-    ? `<div class="tiles">${t(rec.min, '분', '운동 시간')}${t(rec.steps, '', '걸음')}${rec.kcal != null ? t(rec.kcal, 'kcal', '활동 칼로리') : ''}</div>
-       ${rec.types && rec.types.length ? `<div class="chips">${rec.types.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>` : ''}`
-    : `<p class="sub" style="margin:0">${ds > todayStr() ? '아직 오지 않은 날이에요.' : '이날은 기록이 없어요.'}</p>`;
+    ? `<div class="tiles">${t(rec.min, '분', mine.length ? '워치 운동 시간' : '운동 시간')}${t(rec.steps, '', '걸음')}${rec.kcal != null ? t(rec.kcal, 'kcal', '활동 칼로리') : ''}</div>`
+    : `<p class="sub" style="margin:0">${future ? '아직 오지 않은 날이에요.' : '이날은 워치 기록이 없어요.'}</p>`;
   if (ib) body += `<p class="sub" style="margin:10px 0 0">인바디 · ${[ib.w != null && f1(ib.w) + 'kg', ib.m != null && '근육 ' + f1(ib.m) + '%', ib.f != null && '체지방 ' + f1(ib.f) + '%'].filter(Boolean).join(' · ')}</p>`;
   const form = editing ? `
     <div class="edit-row">
@@ -353,9 +393,34 @@ function dayDetail(ds) {
     </div>
     <div class="detail-foot"><button class="btn small ghost" data-act="del-day">지우기</button>
       <span style="display:flex;gap:8px"><button class="btn small ghost" data-act="cancel">취소</button><button class="btn small" data-act="save-day">저장</button></span></div>` : `
-    <div class="detail-foot"><span class="sub">${when ? `${when.getMonth() + 1}/${when.getDate()} ${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')} ${rec.manual ? '직접 적음' : '워치에서 받음'}` : ''}</span>
-      ${ds <= todayStr() ? '<button class="btn small ghost" data-act="edit">직접 고치기</button>' : ''}</div>`;
-  return `<div class="card"><h2>${longDate(ds)}</h2>${body}${form}</div>`;
+    <div class="detail-foot"><span class="sub">${when ? `${hm(when)} ${rec.manual ? '직접 적음' : '워치에서 받음'}` : ''}</span>
+      ${!future ? '<button class="btn small ghost" data-act="edit">직접 고치기</button>' : ''}</div>`;
+
+  // Apple Watch 운동 목록
+  const watch = (rec && rec.watch) || [];
+  const watchHtml = `<div class="wo-head"><h3>Apple Watch 운동</h3></div>
+    ${watch.length ? `<ul class="wo">${watch.map(x => `<li><span class="wo-dot watch"></span><span class="wo-name">${esc(workoutName(x))}</span></li>`).join('')}</ul>`
+      : `<p class="sub wo-empty">${future ? '–' : '워치로 한 운동이 없거나 아직 안 왔어요.'}</p>`}`;
+
+  // 내가 추가한 운동
+  const open = S.drafts['mine-open'] === ds;
+  const recent = [...new Set(Object.values(S.data.mine || {}).flat().map(x => x.name))].filter(n => !QUICK.includes(n)).slice(-6);
+  const mineHtml = `<div class="wo-head"><h3>내가 추가한 운동</h3>${!future && !open ? '<button class="btn small" data-act="mine-open">＋ 운동 추가</button>' : ''}</div>
+    ${mine.length ? `<ul class="wo">${mine.map(x => `<li><span class="wo-dot"></span><span class="wo-name">${esc(x.name)}${x.min ? ` <span class="sub num">· ${x.min}분</span>` : ''}${x.note ? `<span class="wo-note">${esc(x.note)}</span>` : ''}</span>
+        <button class="x" data-del-mine="${esc(x.id)}" aria-label="${esc(x.name)} 지우기">${X_ICON}</button></li>`).join('')}</ul>`
+      : (open ? '' : `<p class="sub wo-empty">${future ? '–' : '워치 없이 한 운동이나 따로 남기고 싶은 운동을 적어요.'}</p>`)}
+    ${open ? `<div class="mine-form">
+      <div class="chips">${[...QUICK, ...recent].map(n => `<button class="chip pick ${S.drafts['mine-name'] === n ? 'on' : ''}" data-pick="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+      <div class="form-grid" style="margin-top:10px">
+        <label class="fld">운동 이름<input id="m-name" data-draft="mine-name" value="${draft('mine-name')}" placeholder="예: 하체 운동"></label>
+        <label class="fld">시간 (분)<input id="m-min" data-draft="mine-min" value="${draft('mine-min')}" inputmode="numeric" placeholder="예: 50"></label>
+      </div>
+      <label class="fld">메모 (선택)<input id="m-note" data-draft="mine-note" value="${draft('mine-note')}" placeholder="예: 스쿼트 40kg 5세트"></label>
+      <div class="detail-foot"><span></span><span style="display:flex;gap:8px"><button class="btn small ghost" data-act="mine-cancel">취소</button><button class="btn small" data-act="mine-save">추가</button></span></div>
+    </div>` : ''}`;
+
+  return `<div class="card"><h2>${longDate(ds)}</h2>${body}${form}</div>
+    <div class="card">${watchHtml}<div class="wo-sep"></div>${mineHtml}</div>`;
 }
 
 // ── 인바디 ──
@@ -515,6 +580,7 @@ function renderSettings() {
             <tr><td>키 <code>steps</code></td><td>값: 2번 '건강 샘플' 변수</td></tr>
           </table>
           <span class="sub">통계 계산은 필요 없어요. 샘플을 그대로 보내면 서버가 더해요.</span></li>
+        <li><b>워치 운동 목록도 보내려면</b>: URL 동작 위에 <b>건강 샘플 찾기</b>를 하나 더 → 유형 <b>운동</b>, 필터 <b>시작일 · 오늘임</b> → URL 동작에 텍스트 필드 추가: 키 <code>workouts</code>, 값은 그 '건강 샘플' 변수.</li>
         <li>빨간 줄 "설정에서 이 동작을 허용할 수 있습니다"가 보이면 눌러서 허용하거나, 설정 → 앱 → 단축어 → 고급에서 데이터 공유를 허용해요.</li>
         <li>▶︎ 눌러서 한 번 실행 → 건강 데이터 접근 <b>허용</b>. "저장됨 …"이 나오고 이 앱 달력에 오늘 기록이 보이면 성공!</li>
       </ol>
@@ -543,7 +609,17 @@ function renderSettings() {
 document.addEventListener('click', async ev => {
   const t = ev.target.closest('button'); if (!t) return;
   if (t.dataset.tab) { S.tab = t.dataset.tab; stopEditing(); render(); scrollTo(0, 0); return; }
-  if (t.dataset.day) { sel = t.dataset.day; stopEditing(); renderCal(); return; }
+  if (t.dataset.day) { sel = t.dataset.day; stopEditing(); if (S.drafts['mine-open'] !== sel) clearDrafts('mine-'); save(); renderCal(); return; }
+  if (t.dataset.pick) { S.drafts['mine-name'] = t.dataset.pick; save(); renderCal(); return; }
+  if (t.dataset.delMine) {
+    const x = mineOf(sel).find(w => w.id === t.dataset.delMine);
+    if (!x || !confirm(`'${x.name}' 운동을 지울까요?`)) return;
+    const list = mineOf(sel).filter(w => w !== x);
+    if (list.length) S.data.mine[sel] = list; else delete S.data.mine[sel];
+    save(); renderCal();
+    post({ mine: { date: sel, list } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
+    return;
+  }
   if (t.dataset.metric) { S.metric = t.dataset.metric; save(); renderIb(); return; }
   if (t.dataset.delIb) {
     const e = S.data.inbody.find(x => x.id === t.dataset.delIb);
@@ -552,6 +628,21 @@ document.addEventListener('click', async ev => {
     saveSoon({ inbody: S.data.inbody }); return;
   }
   const a = t.dataset.act;
+  if (a === 'mine-open') { S.drafts['mine-open'] = sel; save(); renderCal(); setTimeout(() => $('#m-name') && $('#m-name').scrollIntoView({ block: 'center', behavior: 'smooth' }), 50); }
+  if (a === 'mine-cancel') { clearDrafts('mine-'); save(); renderCal(); }
+  if (a === 'mine-save') {
+    const name = $('#m-name').value.trim();
+    if (!name) { toast('운동 이름을 적거나 골라 주세요'); return; }
+    const min = parseInt($('#m-min').value.replace(/D/g, ''), 10);
+    const note = $('#m-note').value.trim();
+    const item = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name };
+    if (min > 0) item.min = min;
+    if (note) item.note = note;
+    const list = [...mineOf(sel), item];
+    S.data.mine = S.data.mine || {}; S.data.mine[sel] = list;
+    clearDrafts('mine-'); save(); renderCal(); toast('추가했어요');
+    post({ mine: { date: sel, list } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
+  }
   if (a === 'prev' || a === 'next') { view = new Date(view.getFullYear(), view.getMonth() + (a === 'next' ? 1 : -1), 1); renderCal(); }
   if (a === 'edit') { editing = true; S.drafts['day-edit'] = sel; save(); renderCal(); }
   if (a === 'cancel') { stopEditing(); renderCal(); }
@@ -587,7 +678,7 @@ document.addEventListener('click', async ev => {
     const k = $('#newkey').value.trim();
     if (!/^[A-Za-z0-9]{24,64}$/.test(k)) { toast('키 모양이 맞지 않아요'); return; }
     if (!confirm('이 기기의 기록 대신 그 키의 기록을 볼까요?')) return;
-    S.key = k; S.data = { days: {}, inbody: [], gym: {} }; S.pending = null; save();
+    S.key = k; S.data = { days: {}, inbody: [], gym: {}, mine: {} }; S.pending = null; save();
     $('#settings').close(); render(); sync();
   }
 });

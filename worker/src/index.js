@@ -3,9 +3,11 @@
 // 아이폰 '단축어' 자동화가 Apple Watch 운동이 끝날 때 오늘 기록(운동 시간·활동 칼로리·걸음 수)을 여기로 보내고,
 // 건강 앱은 여기서 기록을 읽어 달력에 보여 줌. 인바디·헬스 기록도 같은 곳에 보관해서 휴대폰을 바꿔도 남음.
 //
-//   POST /h/{키}   { minutes, kcal, steps, types?, date? }   ← 단축어. 그날 값을 덮어씀(같은 날 여러 번 보내도 안전)
-//   GET  /d/{키}                                            → { days, inbody, gym }
-//   POST /d/{키}   { inbody?, gym?, day? }                   ← 앱. 보낸 항목만 바꿈
+//   POST /h/{키}   { minutes, steps, kcal?, workouts?, date? }  ← 단축어. 그날 값을 덮어씀(같은 날 여러 번 보내도 안전)
+//                  workouts = 오늘 Apple Watch 운동 샘플(한 줄에 하나) → days[날짜].watch
+//   GET  /d/{키}                                               → { days, inbody, gym, mine }
+//   POST /d/{키}   { inbody?, gym?, day?, mine? }               ← 앱. 보낸 항목만 바꿈
+//                  mine = { date, list } 내가 직접 추가한 그날 운동 목록 (빈 목록이면 지움)
 //
 // 키는 앱이 처음 열릴 때 만든 32자리 무작위 문자열. 키를 아는 사람만 읽고 쓸 수 있음.
 // 저장소 (KV): STORE — data:{키} → 위 JSON 하나
@@ -33,7 +35,7 @@ export default {
     const [, kind, key] = url.pathname.split("/");
     if (!["h", "d"].includes(kind) || !KEY_RE.test(key || "")) return json({ error: "not_found" }, 404);
     const sk = `data:${key}`;
-    const load = async () => (await env.STORE.get(sk, "json")) || { days: {}, inbody: [], gym: {} };
+    const load = async () => ({ days: {}, inbody: [], gym: {}, mine: {}, ...((await env.STORE.get(sk, "json")) || {}) });
 
     // 단축어에서 오는 오늘 기록
     if (kind === "h" && request.method === "POST") {
@@ -55,6 +57,9 @@ export default {
       if (steps != null) day.steps = Math.round(steps);
       const types = list(body.types);
       if (types.length) day.types = types;
+      // Apple Watch 운동 목록: 보낸 그대로 줄마다 (형식은 아이폰마다 달라서 앱에서 다듬어 보여 줌)
+      if ("workouts" in body) day.watch = String(Array.isArray(body.workouts) ? body.workouts.join("\n") : body.workouts ?? "")
+        .split(/[\r\n]+/).map(x => x.trim()).filter(Boolean).slice(0, 20).map(x => x.slice(0, 160));
       day.at = Date.now();
       delete day.manual; // 워치 기록이 오면 직접 고친 표시는 없앰
       data.days[date] = day;
@@ -73,6 +78,14 @@ export default {
       const data = await load();
       if (Array.isArray(body.inbody)) data.inbody = body.inbody;
       if (body.gym && typeof body.gym === "object") data.gym = body.gym;
+      // 내가 직접 추가한 운동 (그날 목록 통째로)
+      if (body.mine && DATE_RE.test(body.mine.date || "")) {
+        const list = (Array.isArray(body.mine.list) ? body.mine.list : []).slice(0, 30).map(x => ({
+          id: String(x.id || "").slice(0, 20), name: String(x.name || "").slice(0, 40),
+          min: num(x.min) == null ? undefined : Math.round(num(x.min)), note: x.note ? String(x.note).slice(0, 200) : undefined,
+        })).filter(x => x.id && x.name);
+        if (list.length) data.mine[body.mine.date] = list; else delete data.mine[body.mine.date];
+      }
       // 직접 고친 하루 기록 (null 이면 지움)
       if (body.day && DATE_RE.test(body.day.date || "")) {
         if (body.day.value) data.days[body.day.date] = { ...body.day.value, at: Date.now(), manual: true };
