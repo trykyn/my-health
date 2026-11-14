@@ -144,7 +144,8 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 .fld input:focus { outline: 0; border-color: var(--accent); }
 
 /* ── 인바디 ── */
-.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.metric .bmi-cls { color: var(--accent); font-weight: 700; }
 .metric { text-align: left; background: var(--card); border-radius: var(--r-sm); box-shadow: var(--shadow); padding: 12px 12px 10px; border: 2px solid transparent; }
 .metric.on { border-color: var(--accent); }
 .metric .lab { font-size: 13px; color: var(--muted); }
@@ -480,25 +481,35 @@ const METRICS = {
   w: { lab: '몸무게', unit: 'kg', better: -1 },   // 줄면 좋음
   m: { lab: '근육량', unit: '%', better: 1 },     // 늘면 좋음
   f: { lab: '체지방', unit: '%', better: -1 },    // 줄면 좋음
+  b: { lab: 'BMI', unit: '', better: 0 },          // 몸무게와 키로 자동 계산. 좋고 나쁨은 범위로 판단하므로 변화는 회색으로
 };
+// BMI 범위 (대한비만학회 기준)
+const bmiClass = b => b < 18.5 ? '저체중' : b < 23 ? '정상' : b < 25 ? '비만 전단계' : b < 30 ? '비만 1단계' : b < 35 ? '비만 2단계' : '비만 3단계';
+const heightCm = () => (S.data.profile && S.data.profile.height) || null;
+const bmiOf = w => heightCm() ? r1(w / (heightCm() / 100) ** 2) : null;
 const r1 = v => Math.round(v * 10) / 10;
 const f1 = v => Number(v).toFixed(1); // 29 → 29.0
 function deltaHtml(d, key, suffix = '') {
   if (d == null) return '';
   d = r1(d);
   if (d === 0) return `<span class="delta same">± 0${suffix}</span>`;
-  const cls = d * METRICS[key].better > 0 ? 'good' : 'bad';
+  const cls = !METRICS[key].better ? 'same' : d * METRICS[key].better > 0 ? 'good' : 'bad';
   return `<span class="delta ${cls}">${d > 0 ? '▲ +' : '▼ −'}${Math.abs(d).toFixed(1)}${suffix}</span>`;
 }
 const ibSorted = () => [...S.data.inbody].sort((a, b) => a.date.localeCompare(b.date) || (a.id || '').localeCompare(b.id || ''));
-const series = k => ibSorted().filter(e => e[k] != null);
+const series = k => k === 'b'
+  ? (heightCm() ? ibSorted().filter(e => e.w != null).map(e => ({ ...e, b: bmiOf(e.w) })) : [])
+  : ibSorted().filter(e => e[k] != null);
 
 function renderIb() {
   const card = k => {
     const s = series(k), M = METRICS[k];
     const last = s[s.length - 1], prev = s[s.length - 2], first = s[0];
+    if (k === 'b' && !heightCm()) return `<button class="metric" data-act="height">
+      <div class="lab">BMI</div><div class="val" style="font-size:17px">키 입력</div>
+      <div class="since">키를 적으면 자동 계산돼요</div></button>`;
     return `<button class="metric ${S.metric === k ? 'on' : ''}" data-metric="${k}">
-      <div class="lab">${M.lab}</div>
+      <div class="lab">${M.lab}${k === 'b' && last ? ` · <span class="bmi-cls">${bmiClass(last.b)}</span>` : ''}</div>
       <div class="val num">${last ? f1(last[k]) : '–'}<small>${M.unit}</small></div>
       ${prev ? deltaHtml(last[k] - prev[k], k) : '<span class="delta same">&nbsp;</span>'}
       <div class="since">${prev ? '지난번보다' : s.length ? '첫 기록' : '기록 없음'}</div>
@@ -509,9 +520,10 @@ function renderIb() {
   const cell = (e, k) => { const p = prevOf(e, k); return `<span class="hv num">${e[k] == null ? '–' : `<b>${f1(e[k])}</b>`}${e[k] != null && p != null ? deltaHtml(e[k] - p, k) : ''}</span>`; };
 
   $('#v-ib').innerHTML = `
-    <div class="metrics">${card('w')}${card('m')}${card('f')}</div>
+    <div class="metrics">${card('w')}${card('m')}${card('f')}${card('b')}</div>
     <div class="card">
-      <h2>${METRICS[S.metric].lab} 변화 <span class="sub">(${METRICS[S.metric].unit})</span></h2>
+      <h2>${METRICS[S.metric].lab} 변화${METRICS[S.metric].unit ? ` <span class="sub">(${METRICS[S.metric].unit})</span>` : ''}</h2>
+      ${S.metric === 'b' && heightCm() ? `<p class="sub" style="margin:-6px 0 8px;font-size:13px">키 ${heightCm()}cm 기준 · 18.5–22.9 정상, 23–24.9 비만 전단계, 25 이상 비만 <button class="link" data-act="height">키 바꾸기</button></p>` : ''}
       ${chartHtml(S.metric)}
     </div>
     <div class="card">
@@ -735,6 +747,15 @@ document.addEventListener('click', async ev => {
   if (a === 'copy') {
     try { await navigator.clipboard.writeText(pushUrl()); toast('주소를 복사했어요'); }
     catch { getSelection().selectAllChildren($('#url')); toast('주소를 길게 눌러 복사하세요'); }
+  }
+  if (a === 'height') {
+    const v = prompt('키를 cm로 적어 주세요 (예: 165)', heightCm() || '');
+    if (v == null) return;
+    const h = parseFloat(String(v).replace(',', '.'));
+    if (!(h > 80 && h < 250)) { toast('키를 cm로 적어 주세요'); return; }
+    S.data.profile = { ...(S.data.profile || {}), height: Math.round(h * 10) / 10 };
+    S.metric = 'b'; save(); renderIb();
+    saveSoon({ profile: S.data.profile });
   }
   if (a === 'goal') { const g = parseInt($('#goal').value, 10); if (g > 0 && g < 600) { S.goal = g; save(); render(); toast('저장했어요'); } }
   if (a === 'usekey') {

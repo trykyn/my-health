@@ -6,7 +6,7 @@
 //   POST /h/{키}   { minutes, steps, kcal?, workouts?, date? }  ← 단축어. 그날 값을 덮어씀(같은 날 여러 번 보내도 안전)
 //                  workouts = 오늘 Apple Watch 운동 샘플(한 줄에 하나) → days[날짜].watch
 //   GET  /d/{키}                                               → { days, inbody, gym, mine }
-//   POST /d/{키}   { inbody?, gym?, day?, mine? }               ← 앱. 보낸 항목만 바꿈
+//   POST /d/{키}   { inbody?, gym?, day?, mine?, profile? }               ← 앱. 보낸 항목만 바꿈
 //                  mine = { date, list: [{ id, name, min?, kcal?, note? }] } 내가 적은 그날 운동 (빈 목록이면 지움)
 //
 // 키는 앱이 처음 열릴 때 만든 32자리 무작위 문자열. 키를 아는 사람만 읽고 쓸 수 있음.
@@ -78,6 +78,11 @@ export default {
       const data = await load();
       if (Array.isArray(body.inbody)) data.inbody = body.inbody;
       if (body.gym && typeof body.gym === "object") data.gym = body.gym;
+      // 내 정보 (키 cm → BMI 계산용)
+      if (body.profile && typeof body.profile === "object") {
+        const h = num(body.profile.height);
+        data.profile = { ...(data.profile || {}), height: h && h > 80 && h < 250 ? Math.round(h * 10) / 10 : undefined };
+      }
       // 내가 직접 추가한 운동 (그날 목록 통째로)
       if (body.mine && DATE_RE.test(body.mine.date || "")) {
         const list = (Array.isArray(body.mine.list) ? body.mine.list : []).slice(0, 30).map(x => ({
