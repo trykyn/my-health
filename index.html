@@ -145,6 +145,14 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 
 /* ── 인바디 ── */
 .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+/* 인바디 한마디 */
+.fb h3 { font-size: 15px; font-weight: 800; margin: 12px 0 4px; }
+.fb ul { list-style: none; margin: 0; padding: 0; }
+.fb li { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; font-size: 15px; line-height: 1.45; }
+.fb .fb-ic { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; margin-top: 1px; }
+.fb .fb-ok .fb-ic { background: var(--accent); color: var(--accent-ink); }
+.fb .fb-tip .fb-ic { background: var(--field); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+.fb-note { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
 .metric .bmi-cls { color: var(--accent); font-weight: 700; }
 .metric { text-align: left; background: var(--card); border-radius: var(--r-sm); box-shadow: var(--shadow); padding: 12px 12px 10px; border: 2px solid transparent; }
 .metric.on { border-color: var(--accent); }
@@ -501,6 +509,73 @@ const series = k => k === 'b'
   ? (heightCm() ? ibSorted().filter(e => e.w != null).map(e => ({ ...e, b: bmiOf(e.w) })) : [])
   : ibSorted().filter(e => e[k] != null);
 
+// ── 인바디 한마디 (AI 없이 규칙으로) ──
+// 지난번과 비교한 변화, 연속 기록, 처음과 비교, BMI·체지방 범위, 최근 4주 운동한 날을 보고
+// 칭찬은 최대 3개, 보완할 점은 최대 3개. 체지방 표준 범위는 여성 기준(인바디 18–28%).
+function ibFeedback() {
+  const good = [], tips = [];
+  const s = ibSorted();
+  if (!s.length) return { good, tips };
+  const pick = k => series(k);
+  const last = k => pick(k).at(-1), prev = k => pick(k).at(-2), first = k => pick(k)[0];
+  const d = k => (last(k) && prev(k)) ? r1(last(k)[k] - prev(k)[k]) : null;
+  const sinceFirst = k => pick(k).length > 1 ? r1(last(k)[k] - first(k)[k]) : null;
+  // 같은 방향으로 몇 번 연속 바뀌었는지 (dir: -1 줄어듦, +1 늘어남)
+  const streak = (k, dir) => { const v = pick(k).map(e => e[k]); let n = 0; for (let i = v.length - 1; i > 0 && (v[i] - v[i - 1]) * dir > 0.05; i--) n++; return n; };
+  const pp = x => Math.abs(x).toFixed(1);
+  const dW = d('w'), dM = d('m'), dF = d('f');
+
+  // 칭찬
+  if (streak('f', -1) >= 3) good.push(`체지방이 ${streak('f', -1)}번 연속 줄었어요. 흐름이 아주 좋아요!`);
+  else if (dF != null && dF <= -0.2) good.push(`체지방이 지난번보다 ${pp(dF)}%p 줄었어요. 잘하고 있어요!`);
+  if (streak('m', 1) >= 3) good.push(`근육량이 ${streak('m', 1)}번 연속 늘었어요. 근력 운동 효과가 보여요!`);
+  else if (dM != null && dM >= 0.2) good.push(`근육량이 지난번보다 ${pp(dM)}%p 늘었어요. 근력 운동이 잘 되고 있어요.`);
+  if (dW != null && dW <= -0.3 && dM != null && dM >= 0) good.push(`근육은 지키면서 몸무게가 ${pp(dW)}kg 줄었어요. 가장 좋은 방향이에요.`);
+  const fF = sinceFirst('f');
+  if (fF != null && fF <= -1 && pick('f').length >= 3) good.push(`처음(${shortDate(first('f').date)})보다 체지방이 ${pp(fF)}%p 줄었어요.`);
+  const lf = last('f');
+  if (lf && lf.f >= 18 && lf.f <= 28) good.push(`체지방률 ${f1(lf.f)}%로 표준 범위(18–28%) 안이에요.`);
+  const lb = last('b'), pb = prev('b');
+  if (lb && lb.b >= 18.5 && lb.b < 23 && pb && pb.b >= 23) good.push(`BMI ${f1(lb.b)} · 정상 범위에 들어왔어요!`);
+
+  // 최근 4주 운동한 날
+  const today = parseYmd(todayStr());
+  let active = 0;
+  for (let i = 0; i < 28; i++) { const ds = ymd(new Date(today.getFullYear(), today.getMonth(), today.getDate() - i)); if (dayMin(ds) > 0 || mineOf(ds).length) active++; }
+  if (active >= 12) good.push(`최근 4주 동안 ${active}일 운동했어요. 꾸준함이 최고예요!`);
+
+  // 보완할 점
+  if (dM != null && dM <= -0.2) tips.push(`근육량이 ${pp(dM)}%p 줄었어요. 헬스·필라테스 같은 근력 운동을 주 2–3회 넣고, 끼니마다 단백질(달걀·두부·살코기)을 챙겨 보세요.`);
+  if (dF != null && dF >= 0.2) tips.push(`체지방이 ${pp(dF)}%p 늘었어요. 러닝·자전거 같은 유산소를 주 150분 정도로 늘려 보세요.`);
+  if (dW != null && dW <= -0.5 && dM != null && dM <= -0.2) tips.push('몸무게와 함께 근육도 줄었어요. 너무 적게 먹고 있지 않은지 확인해 보세요.');
+  if (dW != null && dW >= 0.5 && dF != null && dF >= 0.2) tips.push('몸무게와 체지방이 함께 늘었어요. 간식이나 늦은 저녁을 한 번 점검해 보세요.');
+  if (lf && lf.f > 28 && !(dF != null && dF >= 0.2)) tips.push(`체지방률 ${f1(lf.f)}%는 표준(18–28%)보다 조금 높아요. 근력 + 유산소를 함께 하면 가장 빨리 내려가요.`);
+  if (lb && lb.b >= 23) {
+    const target = r1(22.9 * (heightCm() / 100) ** 2);
+    tips.push(`BMI ${f1(lb.b)} · ${bmiClass(lb.b)} 범위예요. 정상(22.9 이하)까지 약 ${pp(last('w').w - target)}kg 남았어요.`);
+  }
+  if (lb && lb.b < 18.5) tips.push(`BMI ${f1(lb.b)} · 저체중 범위예요. 식사량을 조금 늘리고 근력 운동으로 근육을 키워 보세요.`);
+  if (active < 8) tips.push(`최근 4주 동안 운동한 날이 ${active}일이에요. 주 3일을 목표로 해 볼까요?`);
+  const gap = Math.round((today - parseYmd(s.at(-1).date)) / 864e5);
+  if (gap > 35) tips.push(`마지막 측정이 ${gap}일 전이에요. 한 달에 한 번 재면 변화를 보기 좋아요.`);
+
+  if (!good.length && s.length > 1) good.push('큰 변화 없이 잘 유지하고 있어요. 지금처럼 꾸준히!');
+  if (s.length === 1) good.unshift('첫 기록을 남겼어요! 다음 측정부터 변화를 알려 드릴게요.');
+  return { good: good.slice(0, 3), tips: tips.slice(0, 3) };
+}
+
+function feedbackCard() {
+  const { good, tips } = ibFeedback();
+  if (!good.length && !tips.length) return '';
+  const li = (cls, icon, t) => `<li class="${cls}"><span class="fb-ic" aria-hidden="true">${icon}</span><span>${esc(t)}</span></li>`;
+  return `<div class="card fb">
+    <h2>이번 결과 한마디</h2>
+    ${good.length ? `<ul>${good.map(t => li('fb-ok', '✓', t)).join('')}</ul>` : ''}
+    ${tips.length ? `<h3>이렇게 해 보면 좋아요</h3><ul>${tips.map(t => li('fb-tip', '→', t)).join('')}</ul>` : ''}
+    <p class="fb-note">기록을 보고 정해진 규칙으로 만든 참고용 문장이에요. 체지방 표준은 여성 기준이에요.</p>
+  </div>`;
+}
+
 function renderIb() {
   const card = k => {
     const s = series(k), M = METRICS[k];
@@ -521,6 +596,7 @@ function renderIb() {
 
   $('#v-ib').innerHTML = `
     <div class="metrics">${card('w')}${card('m')}${card('f')}${card('b')}</div>
+    ${feedbackCard()}
     <div class="card">
       <h2>${METRICS[S.metric].lab} 변화${METRICS[S.metric].unit ? ` <span class="sub">(${METRICS[S.metric].unit})</span>` : ''}</h2>
       ${S.metric === 'b' && heightCm() ? `<p class="sub" style="margin:-6px 0 8px;font-size:13px">키 ${heightCm()}cm 기준 · 18.5–22.9 정상, 23–24.9 비만 전단계, 25 이상 비만 <button class="link" data-act="height">키 바꾸기</button></p>` : ''}
