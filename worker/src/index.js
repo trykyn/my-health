@@ -47,7 +47,9 @@ export default {
       const day = { ...(data.days[date] || {}) };
       const min = num(body.minutes), kcal = num(body.kcal);
       // 걸음 수는 항상 정수: "8.432"(독일식 천 단위)도 8432 로
-      const steps = body.steps == null || body.steps === "" ? null : Array.isArray(body.steps) ? num(body.steps.map(x => String(x).replace(/\D/g, ""))) : num(String(body.steps).replace(/\D/g, ""));
+      const steps = body.steps == null || body.steps === "" ? null : Array.isArray(body.steps) || /[\r\n]/.test(String(body.steps).trim())
+        ? num((Array.isArray(body.steps) ? body.steps : String(body.steps).split(/[\r\n]+/)).map(x => String(x).replace(/\D/g, "")))
+        : num(String(body.steps).replace(/\D/g, ""));
       if (min != null) day.min = Math.round(min);
       if (kcal != null) day.kcal = Math.round(kcal);
       if (steps != null) day.steps = Math.round(steps);
@@ -100,6 +102,8 @@ function num(v) {
   if (v == null || v === "") return null;
   if (typeof v === "number") return isFinite(v) ? v : null;
   // 건강 샘플 목록을 그대로 보낸 경우: 모두 더함
+  // 단축어는 텍스트 필드에 샘플 여러 개를 한 줄에 하나씩 보냄: "8\n39\n231…" → 줄마다 더함
+  if (typeof v === "string" && /[\r\n]/.test(v.trim())) v = v.split(/[\r\n]+/);
   if (Array.isArray(v)) { const xs = v.map(num).filter(x => x != null); return xs.length ? xs.reduce((a, b) => a + b, 0) : null; }
   let s = String(v).replace(/\s/g, "");
   const m = s.match(/-?[\d.,]+/);
