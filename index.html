@@ -69,10 +69,6 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 .month-head .arrows { display: flex; gap: 6px; }
 .month-head .arrows button { width: 38px; height: 38px; border-radius: 50%; background: var(--field); display: grid; place-items: center; }
 .month-head .arrows svg { width: 20px; height: 20px; }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-.stat { background: var(--field); border-radius: var(--r-sm); padding: 8px 10px; }
-.stat b { display: block; font-weight: 800; font-size: 17px; line-height: 1.3; white-space: nowrap; }
-.stat span { font-size: 12px; color: var(--muted); }
 .wk, .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .wk { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 2px; }
 .wk span:nth-child(7) { color: var(--accent); }
@@ -95,17 +91,15 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 .tile b small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 2px; }
 .tile span { font-size: 12px; color: var(--muted); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.chip { font-size: 13px; padding: 3px 10px; border-radius: 99px; background: var(--soft); color: var(--ink); }
-.chip.pick { font-size: 14px; padding: 6px 12px; }
+.chip { font-size: 14px; padding: 6px 12px; border-radius: 99px; background: var(--soft); color: var(--ink); }
 .chip.pick.on { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
-/* 운동 목록 (워치 / 내가 추가) */
+/* 그날 운동 목록 */
 .wo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; }
 .wo-head h3 { margin: 0; font-size: 16px; font-weight: 800; }
 .wo { list-style: none; margin: 6px 0 0; padding: 0; }
 .wo li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
 .wo li:first-child { border-top: 0; }
 .wo-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
-.wo-dot.watch { background: transparent; box-shadow: inset 0 0 0 3px var(--accent); }
 .wo-name { flex: 1; min-width: 0; }
 .wo-note { display: block; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
 .wo-empty { margin: 4px 0 0; font-size: 14px; }
@@ -113,7 +107,6 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 .wo .x { flex: none; width: 28px; height: 28px; border-radius: 50%; color: var(--muted); display: grid; place-items: center; }
 .wo .x svg { width: 16px; height: 16px; }
 .mine-form { margin-top: 8px; padding-top: 6px; }
-.wo .src { flex: none; font-size: 11px; font-weight: 700; color: var(--accent); background: var(--soft); border-radius: 99px; padding: 2px 8px; }
 /* 오늘 요약 (첫 화면 맨 위) */
 .hero { padding: 18px 16px 14px; }
 .hero-date { margin: 0 0 10px; font-size: 15px; font-weight: 800; color: var(--accent); }
@@ -148,13 +141,10 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 /* ── 인바디 ── */
 .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
 /* 인바디 한마디 */
-.fb h3 { font-size: 15px; font-weight: 800; margin: 12px 0 4px; }
 .fb ul { list-style: none; margin: 0; padding: 0; }
 .fb li { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; font-size: 15px; line-height: 1.45; }
 .fb .fb-ic { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; margin-top: 1px; }
-.fb .fb-ok .fb-ic { background: var(--accent); color: var(--accent-ink); }
-.fb .fb-tip .fb-ic { background: var(--field); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
-.fb-note { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+.fb .fb-ic { background: var(--accent); color: var(--accent-ink); }
 /* 그래프 수치 고르기 */
 .ck-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
 .ck { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 6px 12px; border-radius: 99px; background: var(--field); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
@@ -196,11 +186,6 @@ nav.tabbar button.on { color: var(--accent); font-weight: 600; }
 .hist .x { width: 28px; height: 28px; border-radius: 50%; color: var(--muted); display: grid; place-items: center; }
 .hist .x svg { width: 16px; height: 16px; }
 .empty { text-align: center; color: var(--muted); padding: 18px 0 6px; font-size: 15px; }
-
-/* ── 헬스 (초안) ── */
-.draft { border: 2px dashed var(--line); background: transparent; box-shadow: none; }
-.draft .tag { display: inline-block; font-size: 11px; font-weight: 700; color: var(--accent); background: var(--soft); border-radius: 6px; padding: 1px 7px; margin-bottom: 6px; }
-.draft ul { margin: 6px 0 0; padding-left: 20px; color: var(--muted); font-size: 15px; }
 
 /* ── 설정 창 ── */
 dialog { width: min(540px, 100%); max-width: 100%; max-height: 92vh; margin: auto auto 0; padding: 0; border: 0; border-radius: 22px 22px 0 0; background: var(--bg); color: var(--ink); }
@@ -313,10 +298,10 @@ ol.steps b { font-weight: 600; }
 <script>
 // ─────────────────────────────────────────────────────────────────────────────
 // 내 건강
-//  · 달력: Apple Watch 기록. 아이폰 '단축어' 자동화가 운동이 끝날 때 오늘 운동 시간·활동 칼로리·걸음 수를
-//    동기화 서버(worker/)로 보내면, 앱이 열릴 때와 1분마다 받아 옴.
-//  · 인바디: 몸무게(kg)·근육량(%)·체지방(%) 기록과 변화 그래프.
-//  · 헬스: 틀 구상 중.
+//  · 오늘: 요약 + 달력. 아이폰 '단축어'가 오늘 운동 시간·걸음 수를 동기화 서버(worker/)로 보내면
+//    앱이 열릴 때와 1분마다 받아 옴. 운동 이름·시간·칼로리는 직접 추가.
+//  · 인바디: 몸무게(kg)·근육량(%)·체지방(%)·BMI 기록과 변화 그래프, 칭찬 한마디.
+//  · 헬스: 주간 계획, 세트 기록, 루틴, 휴식 타이머, 운동 그림.
 // 모든 기록은 서버의 data:{연결 키} 하나에 들어 있고, 이 휴대폰에도 복사본을 둠(오프라인용).
 // ─────────────────────────────────────────────────────────────────────────────
 const API = 'https://my-health-sync.weekly-meals-reader.workers.dev';
@@ -329,7 +314,9 @@ const WD_SUN = ['일', '월', '화', '수', '목', '금', '토'];
 // ── 저장 상태 ──
 const S = (() => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } })();
 if (!S.key) S.key = newKey();
-S.data = Object.assign({ days: {}, inbody: [], gym: {}, mine: {} }, S.data);
+const blank = d => Object.assign({ days: {}, inbody: [], gym: {}, mine: {} }, d);
+S.data = blank(S.data);
+delete S.synced; // 예전 버전이 남긴 값
 S.goal = S.goal || 30;
 S.tab = S.tab || 'cal';
 S.chartKeys = S.chartKeys || ['w'];
@@ -357,26 +344,41 @@ const fmtInt = n => Number(n).toLocaleString('ko-KR');
 let view = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })();
 let sel = todayStr();
 const stopEditing = () => { clearDrafts('day-'); save(); };
+// 앱을 켜 둔 채 자정이 지나면 '오늘'·이번 달·이번 주로 돌아감
+let shownDay = todayStr();
+function checkNewDay() {
+  const t = todayStr();
+  if (t === shownDay) return;
+  if (sel === shownDay) sel = t;
+  view = new Date(parseYmd(t).getFullYear(), parseYmd(t).getMonth(), 1);
+  gymWeek = mondayOf(parseYmd(t)); planDay = null;
+  shownDay = t;
+}
 
 // ── 서버와 주고받기 ──
-let syncing = false;
+let syncing = false, lastSync = '';
+const typing = () => !!(document.activeElement && document.activeElement.matches('input'));
 async function sync() {
   if (syncing) return;
   syncing = true;
   try {
     // 아직 못 보낸 인바디·헬스 기록이 있으면 먼저 보냄 (안 그러면 서버 값이 덮어씀)
     if (S.pending) await post({});
-    await chain;
+    await chain.catch(() => {});
     if (S.pending) return;
     const r = await fetch(`${API}/d/${S.key}`, { cache: 'no-store' });
     if (!r.ok) throw new Error(r.status);
-    const d = await r.json();
+    const text = await r.text();
     if (S.pending) return; // 받는 사이에 새로 적은 게 있으면 이번 것은 버림
-    S.data = Object.assign({ days: {}, inbody: [], gym: {}, mine: {} }, d);
-    S.synced = Date.now();
+    // 바뀐 게 없으면 다시 그리지 않음 (1분마다 화면이 깜빡이거나 그림이 튀지 않게)
+    if (text === lastSync) return;
+    lastSync = text;
+    const before = JSON.stringify(S.data);
+    S.data = blank(JSON.parse(text));
+    if (JSON.stringify(S.data) === before) return;
     save();
     // 입력 중이면 화면을 다시 그리지 않음 (키보드가 닫히지 않게)
-    if (!(document.activeElement && document.activeElement.matches('input'))) render();
+    if (!typing()) render();
   } catch { /* 오프라인: 휴대폰에 있는 복사본으로 계속 */ }
   finally { syncing = false; }
 }
@@ -391,13 +393,20 @@ async function flush() {
   const send = S.pending;
   if (!send) return;
   const r = await fetch(`${API}/d/${S.key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(send) });
+  // 서버가 받지 않는 내용(너무 큼 등)은 계속 다시 보내지 않음. 안 그러면 새 기록을 영영 못 받아 옴
+  if (r.status >= 400 && r.status < 500 && r.status !== 429) {
+    if (S.pending === send) S.pending = null;
+    lastSync = ''; save(); toast('저장하지 못했어요');
+    throw Object.assign(new Error(r.status), { shown: true });
+  }
   if (!r.ok) throw new Error(r.status);
-  const data = await r.json();
+  const text = await r.text();
   // 보내는 동안 또 바뀐 게 없을 때만 서버 값을 받아들임 (있으면 다음 차례에 그것까지 보냄)
-  if (S.pending === send) { S.pending = null; S.data = Object.assign({ days: {}, inbody: [], gym: {}, mine: {} }, data); }
+  if (S.pending === send) { S.pending = null; S.data = blank(JSON.parse(text)); lastSync = text; }
   save();
 }
-const saveSoon = body => post(body).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
+const failed = e => { if (!e || !e.shown) toast('인터넷 연결되면 저장돼요'); };
+const saveSoon = body => post(body).then(render).catch(failed);
 
 function toast(msg) {
   const t = $('#toast');
@@ -407,7 +416,8 @@ function toast(msg) {
 
 // ── 그리기 ──
 function render() {
-  $('#today').textContent = longDate(todayStr()).replace(/^/, `${new Date().getFullYear()}년 `);
+  checkNewDay();
+  $('#today').textContent = `${new Date().getFullYear()}년 ${longDate(todayStr())}`;
   for (const b of document.querySelectorAll('nav.tabbar button')) b.classList.toggle('on', b.dataset.tab === S.tab);
   $('#v-cal').hidden = S.tab !== 'cal'; $('#v-ib').hidden = S.tab !== 'ib'; $('#v-gym').hidden = S.tab !== 'gym';
   $('#title').textContent = { cal: '내 건강', ib: '인바디', gym: '헬스' }[S.tab];
@@ -433,15 +443,14 @@ function ring(min) {
 // 그날 운동한 시간: 워치 기록과 내가 추가한 운동 중 큰 쪽 (워치를 차고 한 운동을 또 적어도 두 번 세지 않게)
 const mineOf = ds => (S.data.mine && S.data.mine[ds]) || [];
 const dayMin = ds => Math.max((S.data.days[ds] || {}).min || 0, mineOf(ds).reduce((a, x) => a + (x.min || 0), 0));
-const hm = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 // 첫 화면: 위에는 오늘 요약(크게), 아래에 달력. 달력에서 다른 날을 누르면 달력 밑에 그날 자세히.
 function renderCal() {
   const today = todayStr();
-  const neverSynced = !Object.values(S.data.days).some(r => r.at && !r.manual);
+  const neverSynced = !Object.values(S.data.days).some(r => r.at && !r.manual), unfinished = unfinishedGym();
   $('#v-cal').innerHTML = `
     ${neverSynced ? `<div class="banner"><div><b>Apple Watch 연결하기</b>운동이 끝나면 여기로 바로 올라오게 설정해요.</div><button class="btn small" data-act="setup">설정 방법</button></div>` : ''}
-    ${unfinishedGym().length ? `<div class="banner"><div><b>${shortDate(unfinishedGym()[0])} 헬스를 아직 안 끝냈어요</b>끝내야 계획 체크와 오늘 한 운동에 들어가요.</div><button class="btn small" data-tab="gym">정리하기</button></div>` : ''}
+    ${unfinished.length ? `<div class="banner"><div><b>${shortDate(unfinished[0])} 헬스를 아직 안 끝냈어요</b>끝내야 계획 체크와 오늘 한 운동에 들어가요.</div><button class="btn small" data-tab="gym">정리하기</button></div>` : ''}
     ${!S.keySaved && !neverSynced ? `<div class="banner"><div><b>기록 지키기</b>연결 키를 저장해 두면 휴대폰을 바꿔도 기록을 되찾아요.</div><button class="btn small" data-act="setup">저장하기</button></div>` : ''}
     ${todayHero(today)}
     ${calendarCard(today)}
@@ -508,31 +517,16 @@ function calendarCard(today) {
   </div>`;
 }
 
-// 워치 운동 이름: 영어로 오면 한국어로 (모르는 이름은 그대로)
-const WORKOUT_KO = [
-  [/traditional strength/i, '근력 운동'], [/functional strength/i, '기능성 근력 운동'], [/core/i, '코어 운동'],
-  [/high intensity|hiit/i, '고강도 인터벌'], [/outdoor walk/i, '실외 걷기'], [/indoor walk/i, '실내 걷기'], [/walk/i, '걷기'],
-  [/outdoor run/i, '실외 달리기'], [/indoor run/i, '실내 달리기'], [/run/i, '달리기'], [/hik/i, '하이킹'],
-  [/outdoor cycl/i, '실외 사이클'], [/indoor cycl/i, '실내 사이클'], [/cycl/i, '사이클'], [/elliptical/i, '일립티컬'],
-  [/rowing/i, '로잉'], [/stair/i, '계단 오르기'], [/yoga/i, '요가'], [/pilates/i, '필라테스'], [/pool swim/i, '수영(실내)'],
-  [/open water/i, '수영(실외)'], [/swim/i, '수영'], [/dance/i, '댄스'], [/cool ?down/i, '쿨다운'], [/flexibility|stretch/i, '스트레칭'],
-  [/mind/i, '마음 챙김'], [/tennis/i, '테니스'], [/badminton/i, '배드민턴'], [/^other$/i, '기타'],
-];
-const workoutName = x => { for (const [re, ko] of WORKOUT_KO) if (re.test(x)) return ko; return x; };
 const QUICK = ['필라테스', '러닝', '헬스', '자전거', '홈트레이닝'];
 
-// 그날 운동 목록: 워치 운동 + 내가 추가한 운동을 한 목록으로, 출처 표시와 함께
+// 그날 운동 목록 (직접 추가한 운동 + 끝낸 헬스)
 function workoutsBlock(ds, title) {
-  const rec = S.data.days[ds] || {}, watch = rec.watch || [], mine = mineOf(ds);
-  const future = ds > todayStr(), open = S.drafts['mine-open'] === ds;
-  const recent = [...new Set(Object.values(S.data.mine || {}).flat().map(x => x.name))].filter(n => !QUICK.includes(n)).slice(-6);
-  const items = [
-    ...watch.map(x => `<li><span class="wo-dot watch"></span><span class="wo-name">${esc(workoutName(x))}</span><span class="src">워치</span></li>`),
-    ...mine.map(x => `<li><span class="wo-dot"></span><span class="wo-name">${esc(x.name)}${x.min || x.kcal ? ` <span class="sub num">${x.min ? `· ${x.min}분 ` : ''}${x.kcal ? `· ${fmtInt(x.kcal)}kcal` : ''}</span>` : ''}${x.note ? `<span class="wo-note">${esc(x.note)}</span>` : ''}</span>
-      <button class="x" data-del-mine="${esc(x.id)}" data-date="${ds}" aria-label="${esc(x.name)} 지우기">${X_ICON}</button></li>`),
-  ];
+  const mine = mineOf(ds), future = ds > todayStr(), open = S.drafts['mine-open'] === ds;
+  const recent = open ? [...new Set(Object.values(S.data.mine || {}).flat().map(x => x.name))].filter(n => !QUICK.includes(n)).slice(-6) : [];
+  const items = mine.map(x => `<li><span class="wo-dot"></span><span class="wo-name">${esc(x.name)}${x.min || x.kcal ? ` <span class="sub num">${x.min ? `· ${x.min}분 ` : ''}${x.kcal ? `· ${fmtInt(x.kcal)}kcal` : ''}</span>` : ''}${x.note ? `<span class="wo-note">${esc(x.note)}</span>` : ''}</span>
+      <button class="x" data-del-mine="${esc(x.id)}" data-date="${ds}" aria-label="${esc(x.name)} 지우기">${X_ICON}</button></li>`);
   return `<div class="wo-head"><h3>${title}</h3>${!future && !open ? `<button class="btn small" data-act="mine-open" data-date="${ds}">＋ 운동 추가</button>` : ''}</div>
-    ${items.length ? `<ul class="wo">${items.join('')}</ul>` : open ? '' : ''}
+    ${items.length ? `<ul class="wo">${items.join('')}</ul>` : ''}
     ${open ? `<div class="mine-form">
       <div class="chips">${[...QUICK, ...recent].map(n => `<button class="chip pick ${S.drafts['mine-name'] === n ? 'on' : ''}" data-pick="${esc(n)}">${esc(n)}</button>`).join('')}</div>
       <div class="form-grid" style="margin-top:10px">
@@ -597,11 +591,11 @@ const series = k => k === 'b'
 
 // ── 인바디 한마디 (AI 없이 규칙으로) ──
 // 지난번과 비교한 변화, 연속 기록, 처음과 비교, BMI·체지방 범위, 최근 4주 운동한 날을 보고
-// 칭찬은 최대 3개, 보완할 점은 최대 3개. 체지방 표준 범위는 여성 기준(인바디 18–28%).
-function ibFeedback() {
-  const good = [], tips = [];
+// 칭찬 최대 3개. 체지방 표준 범위는 여성 기준(인바디 18–28%).
+function ibPraise() {
+  const good = [];
   const s = ibSorted();
-  if (!s.length) return { good, tips };
+  if (!s.length) return good;
   const pick = k => series(k);
   const last = k => pick(k).at(-1), prev = k => pick(k).at(-2), first = k => pick(k)[0];
   const d = k => (last(k) && prev(k)) ? r1(last(k)[k] - prev(k)[k]) : null;
@@ -630,33 +624,17 @@ function ibFeedback() {
   for (let i = 0; i < 28; i++) { const ds = ymd(new Date(today.getFullYear(), today.getMonth(), today.getDate() - i)); if (dayMin(ds) > 0 || mineOf(ds).length) active++; }
   if (active >= 12) good.push(`최근 4주 동안 ${active}일 운동했어요. 꾸준함이 최고예요!`);
 
-  // 보완할 점
-  if (dM != null && dM <= -0.2) tips.push(`근육량이 ${pp(dM)}%p 줄었어요. 헬스·필라테스 같은 근력 운동을 주 2–3회 넣고, 끼니마다 단백질(달걀·두부·살코기)을 챙겨 보세요.`);
-  if (dF != null && dF >= 0.2) tips.push(`체지방이 ${pp(dF)}%p 늘었어요. 러닝·자전거 같은 유산소를 주 150분 정도로 늘려 보세요.`);
-  if (dW != null && dW <= -0.5 && dM != null && dM <= -0.2) tips.push('몸무게와 함께 근육도 줄었어요. 너무 적게 먹고 있지 않은지 확인해 보세요.');
-  if (dW != null && dW >= 0.5 && dF != null && dF >= 0.2) tips.push('몸무게와 체지방이 함께 늘었어요. 간식이나 늦은 저녁을 한 번 점검해 보세요.');
-  if (lf && lf.f > 28 && !(dF != null && dF >= 0.2)) tips.push(`체지방률 ${f1(lf.f)}%는 표준(18–28%)보다 조금 높아요. 근력 + 유산소를 함께 하면 가장 빨리 내려가요.`);
-  if (lb && lb.b >= 23) {
-    const target = r1(22.9 * (heightCm() / 100) ** 2);
-    tips.push(`BMI ${f1(lb.b)} · ${bmiClass(lb.b)} 범위예요. 정상(22.9 이하)까지 약 ${pp(last('w').w - target)}kg 남았어요.`);
-  }
-  if (lb && lb.b < 18.5) tips.push(`BMI ${f1(lb.b)} · 저체중 범위예요. 식사량을 조금 늘리고 근력 운동으로 근육을 키워 보세요.`);
-  if (active < 8) tips.push(`최근 4주 동안 운동한 날이 ${active}일이에요. 주 3일을 목표로 해 볼까요?`);
-  const gap = Math.round((today - parseYmd(s.at(-1).date)) / 864e5);
-  if (gap > 35) tips.push(`마지막 측정이 ${gap}일 전이에요. 한 달에 한 번 재면 변화를 보기 좋아요.`);
-
   if (!good.length && s.length > 1) good.push('큰 변화 없이 잘 유지하고 있어요. 지금처럼 꾸준히!');
   if (s.length === 1) good.unshift('첫 기록을 남겼어요! 다음 측정부터 변화를 알려 드릴게요.');
-  return { good: good.slice(0, 3), tips: tips.slice(0, 3) };
+  return good.slice(0, 3);
 }
 
 function feedbackCard() {
-  const { good } = ibFeedback();
+  const good = ibPraise();
   if (!good.length) return '';
-  const li = (cls, icon, t) => `<li class="${cls}"><span class="fb-ic" aria-hidden="true">${icon}</span><span>${esc(t)}</span></li>`;
   return `<div class="card fb">
     <h2>이번 결과 한마디</h2>
-    ${good.length ? `<ul>${good.map(t => li('fb-ok', '✓', t)).join('')}</ul>` : ''}
+    <ul>${good.map(t => `<li><span class="fb-ic" aria-hidden="true">✓</span><span>${esc(t)}</span></li>`).join('')}</ul>
   </div>`;
 }
 
@@ -1062,21 +1040,25 @@ function figMarkup(p, def) {
   return `<g class="far">${far}</g><g class="bd">${body}</g><g class="at">${att}</g>`;
 }
 const figDef = name => FIG[name] || FIG_DEFAULT;
-const figSvg = (name, size = 56) => `<svg class="fig" data-fig="${esc(name)}" data-off="${Math.random().toFixed(2)}" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true"><g class="pr">${figDef(name).props || ''}</g><g class="dyn">${figMarkup(figDef(name).A, figDef(name))}</g></svg>`;
-// 화면에 있는 그림만 움직임 (초당 30번, 움직임 줄이기 설정이면 멈춤)
+// 그림마다 박자를 조금씩 다르게. 이름으로 정해서 화면을 다시 그려도 동작이 튀지 않음
+const figOff = name => { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 997; return h / 997; };
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const figPose = (name, now) => {
+  const def = figDef(name);
+  const e = reduceMotion.matches ? 0.5 : (1 - Math.cos(((now / (def.period || 2600) + figOff(name)) % 1) * 2 * Math.PI)) / 2;
+  return figMarkup(lerpPose(def.A, def.B, e), def);
+};
+const figSvg = (name, size = 56) => `<svg class="fig" data-fig="${esc(name)}" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true"><g class="pr">${figDef(name).props || ''}</g><g>${figPose(name, performance.now())}</g></svg>`;
+// 화면에 보이는 그림만 움직임 (초당 30번). 움직임 줄이기 설정이면 가운데 자세로 멈춤
 let figLast = 0;
 function figLoop(now) {
   requestAnimationFrame(figLoop);
-  if (now - figLast < 33) return;
+  if (now - figLast < 33 || reduceMotion.matches) return;
   figLast = now;
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   for (const el of document.querySelectorAll('svg.fig')) {
     const r = el.getBoundingClientRect();
     if (r.bottom < 0 || r.top > innerHeight || !r.width) continue;
-    const def = figDef(el.dataset.fig), period = def.period || 2600;
-    const ph = (now / period + +el.dataset.off) % 1;
-    const e = reduce ? 0.5 : (1 - Math.cos(ph * 2 * Math.PI)) / 2;
-    el.lastChild.innerHTML = figMarkup(lerpPose(def.A, def.B, e), def);
+    el.lastChild.innerHTML = figPose(el.dataset.fig, now);
   }
 }
 requestAnimationFrame(figLoop);
@@ -1287,9 +1269,9 @@ function saveSession(ds, now) {
   S.pending = { ...(S.pending || {}), gymSession: { date: ds, value: G().sessions[ds] || null } };
   save();
   clearTimeout(gymSaveT);
-  gymSaveT = setTimeout(() => post({}).catch(() => toast('인터넷 연결되면 저장돼요')), now ? 0 : 800);
+  gymSaveT = setTimeout(() => post({}).catch(failed), now ? 0 : 800);
 }
-const saveMeta = () => post({ gymMeta: { plan: G().plan, routines: G().routines, custom: G().custom } }).catch(() => toast('인터넷 연결되면 저장돼요'));
+const saveMeta = () => post({ gymMeta: { plan: G().plan, routines: G().routines, custom: G().custom } }).catch(failed);
 
 // 헬스 기록 중(헬스 탭에서 아직 안 끝냄)에는 화면이 꺼지지 않게
 let wakeLock = null;
@@ -1302,7 +1284,6 @@ async function updateWakeLock() {
   } catch { wakeLock = null; }
   const el = $('#wake'); if (el) el.hidden = !wakeLock;
 }
-document.addEventListener('visibilitychange', updateWakeLock);
 
 // 휴식 타이머 (1분)
 let restEnd = 0, audioCtx = null;
@@ -1330,8 +1311,8 @@ function tickRest() {
     bar.querySelector('b').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
     bar.querySelector('s').style.width = Math.min(100, left / 600) + '%';
   }
-  const el = $('#gym-elapsed'), ses = G().sessions[todayStr()];
-  if (el && ses && !ses.end) el.textContent = `· ${Math.max(1, Math.round((Date.now() - ses.start) / 60000))}분째`;
+  const el = !document.hidden && $('#gym-elapsed'), ses = el && G().sessions[todayStr()];
+  if (ses && !ses.end) el.textContent = `· ${Math.max(1, Math.round((Date.now() - ses.start) / 60000))}분째`;
 }
 setInterval(tickRest, 250);
 
@@ -1539,7 +1520,7 @@ document.addEventListener('click', async ev => {
     const list = mineOf(ds).filter(w => w !== x);
     if (list.length) S.data.mine[ds] = list; else delete S.data.mine[ds];
     save(); renderCal();
-    post({ mine: { date: ds, list } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
+    post({ mine: { date: ds, list } }).then(render).catch(failed);
     return;
   }
   if (t.dataset.metric) { S.chartKeys = [t.dataset.metric]; save(); renderIb(); return; }
@@ -1572,7 +1553,7 @@ document.addEventListener('click', async ev => {
     const list = [...mineOf(ds), item];
     S.data.mine = S.data.mine || {}; S.data.mine[ds] = list;
     clearDrafts('mine-'); save(); renderCal(); toast('추가했어요');
-    post({ mine: { date: ds, list } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
+    post({ mine: { date: ds, list } }).then(render).catch(failed);
   }
   if (a === 'prev' || a === 'next') { view = new Date(view.getFullYear(), view.getMonth() + (a === 'next' ? 1 : -1), 1); renderCal(); }
   if (a === 'edit') { clearDrafts('day-'); S.drafts['day-edit'] = ds; save(); renderCal(); }
@@ -1588,7 +1569,7 @@ document.addEventListener('click', async ev => {
     }
     if (value) S.data.days[ds] = value; else delete S.data.days[ds];
     stopEditing(); renderCal();
-    post({ day: { date: ds, value } }).then(render).catch(() => toast('인터넷 연결되면 저장돼요'));
+    post({ day: { date: ds, value } }).then(render).catch(failed);
   }
   if (a === 'add-ib') {
     const n = id => { const v = $(id).value.trim().replace(',', '.'); const x = parseFloat(v); return isFinite(x) ? r1(x) : null; };
@@ -1633,7 +1614,7 @@ document.addEventListener('click', async ev => {
     const k = $('#newkey').value.trim();
     if (!/^[A-Za-z0-9]{24,64}$/.test(k)) { toast('키 모양이 맞지 않아요'); return; }
     if (!confirm('이 기기의 기록 대신 그 키의 기록을 볼까요?')) return;
-    S.key = k; S.data = { days: {}, inbody: [], gym: {}, mine: {} }; S.pending = null; save();
+    S.key = k; S.data = blank(); S.pending = null; lastSync = ''; save();
     $('#settings').close(); render(); sync();
   }
 });
@@ -1645,7 +1626,7 @@ document.addEventListener('change', async e => {
     if (!b || b.app !== 'my-health' || !b.data) throw new Error('bad');
     const n = (b.data.inbody || []).length, d = Object.keys(b.data.mine || {}).length;
     if (!confirm(`${new Date(b.saved).toLocaleDateString('ko-KR')} 백업으로 되돌릴까요?\n(인바디 ${n}개, 운동 기록 ${d}일)\n지금 기록은 이 백업으로 바뀌어요.`)) return;
-    S.data = Object.assign({ days: {}, inbody: [], gym: {}, mine: {} }, b.data); save(); render();
+    S.data = blank(b.data); save(); render();
     await post({ restore: b.data }); render(); toast('백업에서 되살렸어요');
   } catch { toast('백업 파일을 읽지 못했어요'); }
   finally { e.target.value = ''; }
@@ -1671,7 +1652,7 @@ for (const type of ['gesturestart', 'gesturechange']) document.addEventListener(
 render();
 sync();
 // 앱으로 돌아올 때, 그리고 켜 둔 동안 1분마다 새 기록 확인
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); sync(); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) updateWakeLock(); else { if (!typing()) render(); sync(); } });
 setInterval(() => { if (!document.hidden) sync(); }, 60000);
 
 // 오프라인 + 새 버전 바로 적용 (다른 앱들과 같은 방식)

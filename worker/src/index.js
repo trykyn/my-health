@@ -1,13 +1,14 @@
 // 내 건강 동기화 서버 (Cloudflare Worker, 무료 요금제)
 //
-// 아이폰 '단축어' 자동화가 Apple Watch 운동이 끝날 때 오늘 기록(운동 시간·활동 칼로리·걸음 수)을 여기로 보내고,
-// 건강 앱은 여기서 기록을 읽어 달력에 보여 줌. 인바디·헬스 기록도 같은 곳에 보관해서 휴대폰을 바꿔도 남음.
+// 아이폰 '단축어'가 오늘 운동 시간·걸음 수를 여기로 보내고, 건강 앱은 여기서 기록을 읽음.
+// 인바디·헬스·직접 추가한 운동도 같은 곳에 보관해서 휴대폰을 바꿔도 남음.
 //
-//   POST /h/{키}   { minutes, steps, kcal?, workouts?, date? }  ← 단축어. 그날 값을 덮어씀(같은 날 여러 번 보내도 안전)
-//                  workouts = 오늘 Apple Watch 운동 샘플(한 줄에 하나) → days[날짜].watch
-//   GET  /d/{키}                                               → { days, inbody, gym, mine }
-//   POST /d/{키}   { restore?, inbody?, gym?, gymMeta?, gymSession?, day?, mine?, profile? }  (restore = 백업 파일 전체)               ← 앱. 보낸 항목만 바꿈
-//                  mine = { date, list: [{ id, name, min?, kcal?, note? }] } 내가 적은 그날 운동 (빈 목록이면 지움)
+//   POST /h/{키}   { minutes, steps, date? }  ← 단축어. 그날 값을 덮어씀(같은 날 여러 번 보내도 안전)
+//                  값은 건강 샘플 목록(한 줄에 하나)이어도 됨 → 모두 더함
+//   GET  /d/{키}                              → { days, inbody, gym, mine, profile }
+//   POST /d/{키}   { restore?, inbody?, gym?, gymMeta?, gymSession?, day?, mine?, profile? }  ← 앱. 보낸 항목만 바꿈
+//                  restore = 백업 파일 전체로 바꿈
+//                  mine = { date, list: [{ id, name, min?, kcal?, note?, gym? }] } 내가 적은 그날 운동 (빈 목록이면 지움)
 //
 // 키는 앱이 처음 열릴 때 만든 32자리 무작위 문자열. 키를 아는 사람만 읽고 쓸 수 있음.
 // 저장소 (KV): STORE — data:{키} → 위 JSON 하나
@@ -39,32 +40,24 @@ export default {
 
     // 단축어에서 오는 오늘 기록
     if (kind === "h" && request.method === "POST") {
-      const { body: rawBody, raw, type } = await readBody(request);
-      // 아이폰이 첫 글자를 대문자로 바꿔도 괜찮게 (Kcal, Steps → kcal, steps)
+      const rawBody = await readBody(request);
+      // 아이폰이 첫 글자를 대문자로 바꿔도 괜찮게 (Steps → steps)
       const body = Object.fromEntries(Object.entries(rawBody || {}).map(([k, v]) => [k.trim().toLowerCase(), v]));
-      // 단축어가 실제로 무엇을 보내는지 확인용: 마지막 요청 그대로 30일 보관
-      await env.STORE.put(`last:${key}`, JSON.stringify({ at: new Date().toISOString(), type, raw: raw.slice(0, 20000) }), { expirationTtl: 2592000 });
       const date = DATE_RE.test(String(body.date || "")) ? body.date : berlinToday();
       const data = await load();
       const day = { ...(data.days[date] || {}) };
-      const min = num(body.minutes), kcal = num(body.kcal);
-      // 걸음 수는 항상 정수: "8.432"(독일식 천 단위)도 8432 로
-      const steps = body.steps == null || body.steps === "" ? null : Array.isArray(body.steps) || /[\r\n]/.test(String(body.steps).trim())
-        ? num((Array.isArray(body.steps) ? body.steps : String(body.steps).split(/[\r\n]+/)).map(x => String(x).replace(/\D/g, "")))
-        : num(String(body.steps).replace(/\D/g, ""));
+      delete day.kcal; delete day.types; delete day.watch; // 예전 버전이 남긴 값
+      const min = num(body.minutes);
+      // 걸음 수는 항상 정수: "8.432"(독일식 천 단위)도 8432 로. 줄마다 하나씩 오면 더함
+      const steps = body.steps == null || body.steps === "" ? null
+        : num((Array.isArray(body.steps) ? body.steps : String(body.steps).split(/[\r\n]+/)).map(x => String(x).replace(/\D/g, "")));
       if (min != null) day.min = Math.round(min);
-      if (kcal != null) day.kcal = Math.round(kcal);
       if (steps != null) day.steps = Math.round(steps);
-      const types = list(body.types);
-      if (types.length) day.types = types;
-      // Apple Watch 운동 목록: 보낸 그대로 줄마다 (형식은 아이폰마다 달라서 앱에서 다듬어 보여 줌)
-      if ("workouts" in body) day.watch = String(Array.isArray(body.workouts) ? body.workouts.join("\n") : body.workouts ?? "")
-        .split(/[\r\n]+/).map(x => x.trim()).filter(Boolean).slice(0, 20).map(x => x.slice(0, 160));
       day.at = Date.now();
       delete day.manual; // 워치 기록이 오면 직접 고친 표시는 없앰
       data.days[date] = day;
       await env.STORE.put(sk, JSON.stringify(data));
-      return new Response(`저장됨 ${date}: ${day.min ?? "-"}분 · ${day.kcal ?? "-"}kcal · ${day.steps ?? "-"}걸음`, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+      return new Response(`저장됨 ${date}: ${day.min ?? "-"}분 · ${day.steps ?? "-"}걸음`, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
     }
 
     if (kind === "d" && request.method === "GET") return json(await load());
@@ -124,20 +117,16 @@ export default {
 // 단축어는 JSON 또는 양식(form)으로 보낼 수 있음
 async function readBody(request) {
   const type = request.headers.get("Content-Type") || "";
-  if (type.includes("multipart")) {
-    const o = Object.fromEntries(await request.formData());
-    return { body: o, raw: JSON.stringify(o), type };
-  }
+  if (type.includes("multipart")) return Object.fromEntries(await request.formData());
   const raw = await request.text();
-  if (type.includes("urlencoded")) return { body: Object.fromEntries(new URLSearchParams(raw)), raw, type };
-  try { return { body: raw ? JSON.parse(raw) : {}, raw, type }; } catch { return { body: {}, raw, type }; }
+  if (type.includes("urlencoded")) return Object.fromEntries(new URLSearchParams(raw));
+  try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 }
 
 // "45", 45, "320,5 kcal", "1.234", "1,234.5" 처럼 어떤 모양이든 숫자로. 없으면 null
 function num(v) {
   if (v == null || v === "") return null;
   if (typeof v === "number") return isFinite(v) ? v : null;
-  // 건강 샘플 목록을 그대로 보낸 경우: 모두 더함
   // 단축어는 텍스트 필드에 샘플 여러 개를 한 줄에 하나씩 보냄: "8\n39\n231…" → 줄마다 더함
   if (typeof v === "string" && /[\r\n]/.test(v.trim())) v = v.split(/[\r\n]+/);
   if (Array.isArray(v)) { const xs = v.map(num).filter(x => x != null); return xs.length ? xs.reduce((a, b) => a + b, 0) : null; }
@@ -159,12 +148,6 @@ function num(v) {
   return isFinite(n) ? n : null;
 }
 
-// 운동 종류: 배열이든 줄바꿈/쉼표로 이어진 글자든 목록으로
-function list(v) {
-  if (!v) return [];
-  const arr = Array.isArray(v) ? v : String(v).split(/[\n,]+/);
-  return [...new Set(arr.map(x => String(x).trim()).filter(Boolean))].slice(0, 10).map(x => x.slice(0, 40));
-}
 
 function berlinToday() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
