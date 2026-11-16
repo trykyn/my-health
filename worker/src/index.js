@@ -99,15 +99,13 @@ export default {
         pick("height", 80, 250, 1); pick("cycleLen", 15, 60); pick("periodLen", 1, 14);
         data.profile = p;
       }
-      // 생리 기록: { 날짜: { f: 0~3 (0 = 생리 아님, 1 적음, 2 보통, 3 많음), s: [증상], n: 메모 } | null }
+      // 생리 기록: { 날짜: { f: 0~3 (0 = 생리 아님, 1 적음, 2 보통, 3 많음) } | null }
       if (body.cycleDays && typeof body.cycleDays === "object") {
         data.cycle = data.cycle || {};
         for (const [d, v] of Object.entries(body.cycleDays).slice(0, 400)) {
           if (!DATE_RE.test(d)) continue;
           const e = {};
           if (v && [0, 1, 2, 3].includes(v.f)) e.f = v.f;
-          if (v && Array.isArray(v.s) && v.s.length) e.s = v.s.slice(0, 12).map(x => String(x).slice(0, 20));
-          if (v && v.n) e.n = String(v.n).slice(0, 300);
           if (Object.keys(e).length) data.cycle[d] = e; else delete data.cycle[d];
         }
       }
