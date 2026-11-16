@@ -1529,11 +1529,13 @@ function cycMarks(I) {
   const pp = new Set(), fw = new Set(), ov = new Set(), today = todayStr();
   if (!I.L) return { pp, fw, ov };
   if (I.ongoing) for (let d = addDays(I.L.end, 1); d <= addDays(I.L.start, I.periodLen - 1); d = addDays(d, 1)) if (d >= today) pp.add(d);
+  // 오늘부터 1년 뒤까지 같은 주기로 이어서 예상
   let s = I.late ? today : I.next;
-  for (let k = 0; k < 4; k++) {
+  const until = addDays(today, 366);
+  for (let k = 0; addDays(s, -19) <= until; k++) {
     const o = addDays(s, -14);
     if (o >= I.L.start && !(k === 0 && I.late)) { ov.add(o); for (let i = -5; i <= 1; i++) fw.add(addDays(o, i)); }
-    for (let i = 0; i < I.periodLen; i++) if (addDays(s, i) >= today) pp.add(addDays(s, i));
+    if (s <= until) for (let i = 0; i < I.periodLen; i++) if (addDays(s, i) >= today) pp.add(addDays(s, i));
     s = addDays(s, I.cycleLen);
   }
   return { pp, fw, ov };
