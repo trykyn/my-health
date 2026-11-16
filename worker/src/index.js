@@ -1,12 +1,12 @@
 // 내 건강 동기화 서버 (Cloudflare Worker, 무료 요금제)
 //
 // 아이폰 '단축어'가 오늘 운동 시간·걸음 수를 여기로 보내고, 건강 앱은 여기서 기록을 읽음.
-// 인바디·헬스·직접 추가한 운동도 같은 곳에 보관해서 휴대폰을 바꿔도 남음.
+// 인바디·헬스·직접 추가한 운동·생리 기록도 같은 곳에 보관해서 휴대폰을 바꿔도 남음.
 //
 //   POST /h/{키}   { minutes, steps, date? }  ← 단축어. 그날 값을 덮어씀(같은 날 여러 번 보내도 안전)
 //                  값은 건강 샘플 목록(한 줄에 하나)이어도 됨 → 모두 더함
-//   GET  /d/{키}                              → { days, inbody, gym, mine, profile }
-//   POST /d/{키}   { restore?, inbody?, gym?, gymMeta?, gymSession?, day?, mine?, profile? }  ← 앱. 보낸 항목만 바꿈
+//   GET  /d/{키}                              → { days, inbody, gym, mine, cycle, profile }
+//   POST /d/{키}   { restore?, inbody?, gym?, gymMeta?, gymSession?, day?, mine?, cycleDays?, profile? }  ← 앱. 보낸 항목만 바꿈
 //                  restore = 백업 파일 전체로 바꿈
 //                  mine = { date, list: [{ id, name, min?, kcal?, note?, gym? }] } 내가 적은 그날 운동 (빈 목록이면 지움)
 //
@@ -36,7 +36,7 @@ export default {
     const [, kind, key] = url.pathname.split("/");
     if (!["h", "d"].includes(kind) || !KEY_RE.test(key || "")) return json({ error: "not_found" }, 404);
     const sk = `data:${key}`;
-    const load = async () => ({ days: {}, inbody: [], gym: {}, mine: {}, ...((await env.STORE.get(sk, "json")) || {}) });
+    const load = async () => ({ days: {}, inbody: [], gym: {}, mine: {}, cycle: {}, ...((await env.STORE.get(sk, "json")) || {}) });
 
     // 단축어에서 오는 오늘 기록
     if (kind === "h" && request.method === "POST") {
@@ -62,7 +62,7 @@ export default {
 
     if (kind === "d" && request.method === "GET") return json(await load());
 
-    // 앱에서 오는 인바디·헬스 기록
+    // 앱에서 오는 인바디·헬스·생리 기록
     if (kind === "d" && request.method === "POST") {
       const text = await request.text();
       if (text.length > 2_000_000) return json({ error: "too_big" }, 413);
@@ -72,7 +72,7 @@ export default {
       // 백업 파일로 되살리기: 기록 전체를 바꿈
       if (body.restore && typeof body.restore === "object") {
         const r = body.restore, obj = v => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
-        data = { days: obj(r.days), inbody: Array.isArray(r.inbody) ? r.inbody : [], gym: obj(r.gym), mine: obj(r.mine), profile: obj(r.profile) };
+        data = { days: obj(r.days), inbody: Array.isArray(r.inbody) ? r.inbody : [], gym: obj(r.gym), mine: obj(r.mine), cycle: obj(r.cycle), profile: obj(r.profile) };
       }
       if (Array.isArray(body.inbody)) data.inbody = body.inbody;
       if (body.gym && typeof body.gym === "object") data.gym = body.gym;
@@ -88,10 +88,28 @@ export default {
         if (body.gymSession.value) data.gym.sessions[body.gymSession.date] = body.gymSession.value;
         else delete data.gym.sessions[body.gymSession.date];
       }
-      // 내 정보 (키 cm → BMI 계산용)
+      // 내 정보: 키 cm (BMI 계산용), 평소 생리 주기·기간 (기록이 쌓이기 전 예상용). 보낸 것만 바꿈
       if (body.profile && typeof body.profile === "object") {
-        const h = num(body.profile.height);
-        data.profile = { ...(data.profile || {}), height: h && h > 80 && h < 250 ? Math.round(h * 10) / 10 : undefined };
+        const p = { ...(data.profile || {}) }, b = body.profile;
+        const pick = (k, lo, hi, digits = 0) => {
+          if (!(k in b)) return;
+          const v = num(b[k]);
+          p[k] = v != null && v >= lo && v <= hi ? Math.round(v * 10 ** digits) / 10 ** digits : undefined;
+        };
+        pick("height", 80, 250, 1); pick("cycleLen", 15, 60); pick("periodLen", 1, 14);
+        data.profile = p;
+      }
+      // 생리 기록: { 날짜: { f: 0~3 (0 = 생리 아님, 1 적음, 2 보통, 3 많음), s: [증상], n: 메모 } | null }
+      if (body.cycleDays && typeof body.cycleDays === "object") {
+        data.cycle = data.cycle || {};
+        for (const [d, v] of Object.entries(body.cycleDays).slice(0, 400)) {
+          if (!DATE_RE.test(d)) continue;
+          const e = {};
+          if (v && [0, 1, 2, 3].includes(v.f)) e.f = v.f;
+          if (v && Array.isArray(v.s) && v.s.length) e.s = v.s.slice(0, 12).map(x => String(x).slice(0, 20));
+          if (v && v.n) e.n = String(v.n).slice(0, 300);
+          if (Object.keys(e).length) data.cycle[d] = e; else delete data.cycle[d];
+        }
       }
       // 내가 직접 추가한 운동 (그날 목록 통째로)
       if (body.mine && DATE_RE.test(body.mine.date || "")) {
