@@ -276,7 +276,6 @@ ol.steps b { font-weight: 600; }
 .cday.fw .cn { background: color-mix(in srgb, var(--c-f) 16%, transparent); }
 .cday.ov .cn { border-color: var(--c-f); }
 .cday.today .cn { font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
-.cday.sel { background: var(--soft); }
 .legend-line i.lp { background: var(--accent); opacity: 1; }
 .legend-line i.lpp { background: none; opacity: 1; width: 8px; height: 8px; border: 1.5px dashed var(--accent); }
 .legend-line i.lfw { background: var(--c-f); opacity: .3; }
@@ -1491,7 +1490,6 @@ const flowOf = ds => (CY()[ds] || {}).f || 0;
 // 가운데 값: 한 번 잘못 적은 기록이 예상을 크게 흔들지 않게
 const mid = xs => { const v = [...xs].sort((a, b) => a - b), h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; };
 let cycView = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })();
-let cycSel = null;
 
 // 생리한 날 묶기: 사이에 기록을 빼먹은 날이 6일까지면 같은 생리
 function periods() {
@@ -1595,10 +1593,10 @@ function cycCalendar(I) {
   let cells = '<span></span>'.repeat(off);
   for (let d = 1; d <= n; d++) {
     const ds = ymd(new Date(y, m, d)), f = flowOf(ds);
-    const cls = ['cday', f && 'p f' + f, !f && pp.has(ds) && 'pp', !f && fw.has(ds) && 'fw', ov.has(ds) && 'ov', ds === today && 'today', ds === cycSel && 'sel'].filter(Boolean).join(' ');
+    const cls = ['cday', f && 'p f' + f, !f && pp.has(ds) && 'pp', !f && fw.has(ds) && 'fw', ov.has(ds) && 'ov', ds === today && 'today'].filter(Boolean).join(' ');
     const inner = `<span class="cn num">${d}</span>`;
     cells += ds > today ? `<span class="${cls}">${inner}</span>`
-      : `<button class="${cls}" data-cday="${ds}" aria-label="${longDate(ds)}${f ? `, 생리 ${FLOW[f]}` : ''}">${inner}</button>`;
+      : `<button class="${cls}" data-cday="${ds}" aria-pressed="${!!f}" aria-label="${longDate(ds)} 생리">${inner}</button>`;
   }
   return `<div class="card">
     <div class="month-head">
@@ -1608,16 +1606,7 @@ function cycCalendar(I) {
     <div class="wk">${WD.map(w => `<span>${w}</span>`).join('')}</div>
     <div class="cgrid" id="cgrid">${cells}</div>
     <div class="legend-line"><span><i class="lp"></i>생리</span><span><i class="lpp"></i>예상</span><span><i class="lfw"></i>가임기</span><span><i class="lov"></i>배란일</span></div>
-    <p class="sub" style="margin:6px 0 0;font-size:12px">날짜를 누르면 양을 적어요. 예상과 가임기는 기록으로 어림한 값이라 피임에 쓰면 안 돼요.</p>
-  </div>`;
-}
-
-function cycDayCard(ds) {
-  const f = flowOf(ds);
-  return `<div class="card" id="cyc-day">
-    <div class="wo-head"><h3>${longDate(ds)}</h3><button class="link" data-act="cyc-close">닫기</button></div>
-    <p class="sub" style="margin:8px 0 0;font-size:13px">생리 양</p>
-    <div class="chips" style="margin-top:6px">${FLOW.map((l, i) => `<button class="chip pick ${f === i ? 'on' : ''}" data-cyc-flow="${i}" data-date="${ds}">${l}</button>`).join('')}</div>
+    <p class="sub" style="margin:6px 0 0;font-size:12px">날짜를 누르면 생리한 날로 체크되고, 다시 누르면 지워져요. 예상과 가임기는 기록으로 어림한 값이라 피임에 쓰면 안 돼요.</p>
   </div>`;
 }
 
@@ -1646,26 +1635,25 @@ function cycStats(I) {
 
 function renderCyc() {
   const I = cycleInfo();
-  if (cycSel && cycSel > todayStr()) cycSel = null;
-  $('#v-cyc').innerHTML = cycHero(I) + (I.L ? cycCalendar(I) : '') + (cycSel ? cycDayCard(cycSel) : '') + cycStats(I);
+  $('#v-cyc').innerHTML = cycHero(I) + (I.L ? cycCalendar(I) : '') + cycStats(I);
 }
 
-// 그날 생리 양 바꾸기 → 저장
+// 그날 생리 기록 바꾸기 → 저장 (f 가 null 이면 기록을 지움)
 function setCycDay(ds, f) {
-  CY()[ds] = { f };
+  if (f == null) delete CY()[ds]; else CY()[ds] = { f };
   save(); renderCyc();
   saveSoon({ cycleDays: { [ds]: CY()[ds] || null } });
 }
 function cycClick(t) {
   const a = t.dataset.act, today = todayStr();
-  if (t.dataset.cday) { cycSel = cycSel === t.dataset.cday ? null : t.dataset.cday; renderCyc(); if (cycSel) scrollToEl($('#cyc-day'), 12); return true; }
+  // 달력: 누르면 생리한 날로 체크(보통), 다시 누르면 지움. 오늘을 지우면 '끝났어요'와 같음
+  if (t.dataset.cday) { const ds = t.dataset.cday; setCycDay(ds, flowOf(ds) ? (ds === today ? 0 : null) : 2); return true; }
   if (t.dataset.cycFlow !== undefined) {
     const ds = t.dataset.date || today, f = +t.dataset.cycFlow, wasNone = !cycleInfo().ongoing && ds === today && f > 0 && !flowOf(ds);
     setCycDay(ds, f);
     if (wasNone) toast('기록했어요. 몸 잘 챙겨요');
     return true;
   }
-  if (a === 'cyc-close') { cycSel = null; renderCyc(); return true; }
   if (a === 'cyc-prev' || a === 'cyc-next') { cycView = new Date(cycView.getFullYear(), cycView.getMonth() + (a === 'cyc-next' ? 1 : -1), 1); renderCyc(); return true; }
   if (a === 'cyc-setup' || a === 'cyc-settings') {
     let len, plen;
