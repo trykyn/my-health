@@ -327,6 +327,7 @@ ol.steps b { font-weight: 600; }
 //    앱이 열릴 때와 1분마다 받아 옴. 운동 이름·시간·칼로리는 직접 추가.
 //  · 인바디: 몸무게(kg)·근육량(%)·체지방(%)·BMI 기록과 변화 그래프, 칭찬 한마디.
 //  · 헬스: 주간 계획, 세트 기록, 루틴, 휴식 타이머, 운동 그림.
+//  · 생리: 달력에 생리한 날 체크, 다음 예정일·가임기 예상(1년 뒤까지), 주기 통계.
 // 모든 기록은 서버의 data:{연결 키} 하나에 들어 있고, 이 휴대폰에도 복사본을 둠(오프라인용).
 // ─────────────────────────────────────────────────────────────────────────────
 const API = 'https://my-health-sync.weekly-meals-reader.workers.dev';
@@ -388,7 +389,7 @@ async function sync() {
   if (syncing) return;
   syncing = true;
   try {
-    // 아직 못 보낸 인바디·헬스 기록이 있으면 먼저 보냄 (안 그러면 서버 값이 덮어씀)
+    // 아직 못 보낸 기록이 있으면 먼저 보냄 (안 그러면 서버 값이 덮어씀)
     if (S.pending) await post({});
     await chain.catch(() => {});
     if (S.pending) return;
@@ -410,11 +411,16 @@ async function sync() {
 }
 // 저장은 한 줄로 차례차례 (빠르게 여러 번 눌러도 늦게 온 답이 새 기록을 덮지 않게)
 let chain = Promise.resolve();
-function post(body) {
-  // 생리 기록은 날짜별로 모아서 보냄 (빨리 여러 날을 눌러도 앞의 것이 덮이지 않게)
-  const cd = body.cycleDays && { ...((S.pending || {}).cycleDays || {}), ...body.cycleDays };
-  S.pending = { ...(S.pending || {}), ...body, ...(cd ? { cycleDays: cd } : {}) };
+// 날짜별 기록은 { 날짜: 값 } 으로 모아 둠: 오프라인이거나 빨리 여러 날을 고쳐도 앞의 날이 덮이지 않게
+const DAY_MAPS = ['cycleDays', 'mineDays', 'gymSessions', 'dayEdits'];
+function queue(body) {
+  const prev = S.pending || {}, next = { ...prev, ...body };
+  for (const k of DAY_MAPS) if (body[k]) next[k] = { ...(prev[k] || {}), ...body[k] };
+  S.pending = next;
   save();
+}
+function post(body) {
+  queue(body);
   return (chain = chain.catch(() => {}).then(flush));
 }
 async function flush() {
@@ -496,7 +502,7 @@ function bigRing(min) {
 }
 
 function todayHero(ds) {
-  const rec = S.data.days[ds] || {}, min = dayMin(ds);
+  const rec = S.data.days[ds] || {}, min = dayMin(ds), cyc = cycLine();
   const status = min >= S.goal ? '오늘 목표 달성!' : min > 0 ? `목표까지 ${S.goal - min}분` : '아직 운동 전이에요';
   const last = ibSorted().at(-1), prev = last && ibSorted().at(-2);
   const ibLine = last ? `<button class="ib-mini" data-tab="ib">
@@ -510,7 +516,7 @@ function todayHero(ds) {
       <div class="hero-facts">
         <span class="pill ${min >= S.goal ? 'done' : ''}">${status}</span>
         ${planOf(ds).length ? `<div class="plan-line">오늘 계획 ${planOf(ds).map(n => `<span class="${didOn(ds, n) ? 'ok' : ''}">${didOn(ds, n) ? '✓ ' : ''}${esc(n)}</span>`).join('')}</div>` : ''}
-        ${cycLine() ? `<button class="cyc-mini" data-tab="cyc"><i></i>${cycLine()}</button>` : ''}
+        ${cyc ? `<button class="cyc-mini" data-tab="cyc"><i></i>${cyc}</button>` : ''}
         <div><b class="num">${rec.steps != null ? fmtInt(rec.steps) : '–'}</b><span>걸음</span></div>
         ${(() => { const k = mineOf(ds).reduce((a, x) => a + (x.kcal || 0), 0); return k ? `<div><b class="num">${fmtInt(k)}</b><span>운동 kcal</span></div>` : ''; })()}
       </div>
@@ -1296,8 +1302,7 @@ function renderGym() {
 // 저장: 세트 기록은 그날 것 하나만, 계획·루틴은 따로
 let gymSaveT;
 function saveSession(ds, now) {
-  S.pending = { ...(S.pending || {}), gymSession: { date: ds, value: G().sessions[ds] || null } };
-  save();
+  queue({ gymSessions: { [ds]: G().sessions[ds] || null } });
   clearTimeout(gymSaveT);
   gymSaveT = setTimeout(() => post({}).catch(failed), now ? 0 : 800);
 }
@@ -1350,8 +1355,9 @@ function gymInput(e) {
   const k = e.target.dataset && e.target.dataset.gs;
   if (k) {
     const [i, j, f] = k.split(':'), s = G().sessions[todayStr()];
-    if (!s || !s.items[i]) return;
-    s.items[i].sets[j][f] = e.target.value.replace(',', '.').trim();
+    const st = s && s.items[i] && s.items[i].sets[j];
+    if (!st) return;
+    st[f] = e.target.value.replace(',', '.').trim();
     saveSession(todayStr());
   }
   if (e.target.id === 'pk-q') {
@@ -1407,7 +1413,8 @@ function gymClick(t) {
     return true;
   }
   if (t.dataset.gsOk) {
-    const [i, j] = t.dataset.gsOk.split(':').map(Number), st = s.items[i].sets[j];
+    const [i, j] = t.dataset.gsOk.split(':').map(Number), st = s.items[i] && s.items[i].sets[j];
+    if (!st) { renderGym(); return true; }
     st.done = !st.done;
     if (st.done) startRest(60);
     saveSession(today); renderGym(); return true;
@@ -1440,7 +1447,7 @@ function finishSession(ds) {
   const list = mineOf(ds).filter(x => !x.gym);
   list.push({ id: 'gym' + ds.replace(/-/g, ''), name: '헬스', min: s.min, kcal: s.kcal, note, gym: true });
   S.data.mine = S.data.mine || {}; S.data.mine[ds] = list;
-  S.pending = { ...(S.pending || {}), mine: { date: ds, list } };
+  queue({ mineDays: { [ds]: list } });
   saveSession(ds, true); renderGym();
   toast(ds === todayStr() ? '수고했어요! 오늘 한 운동에 넣었어요' : `${shortDate(ds)} 헬스를 정리했어요`);
   return true;
@@ -1452,7 +1459,7 @@ function cancelSession(ds) {
   if (ds === todayStr()) { restEnd = 0; pickerOpen = false; }
   const list = mineOf(ds).filter(x => !x.gym);
   if (list.length) S.data.mine[ds] = list; else delete S.data.mine[ds];
-  S.pending = { ...(S.pending || {}), mine: { date: ds, list } };
+  queue({ mineDays: { [ds]: list } });
   saveSession(ds, true); renderGym(); return true;
 }
 const unfinishedGym = () => Object.keys(G().sessions).filter(d => d < todayStr() && !G().sessions[d].end).sort();
@@ -1668,11 +1675,11 @@ function cycClick(t) {
       if (!plen) return true;
     }
     if (!(len >= 15 && len <= 60) || !(plen >= 1 && plen <= 14)) { toast('주기는 15–60일, 기간은 1–14일로 적어 주세요'); return true; }
+    const start = a === 'cyc-setup' ? $('#c-start').value : '';
+    if (a === 'cyc-setup' && (!start || start > today)) { toast('마지막 생리 시작일을 골라 주세요'); return true; }
     S.data.profile = { ...(S.data.profile || {}), cycleLen: len, periodLen: plen };
     const body = { profile: S.data.profile };
     if (a === 'cyc-setup') {
-      const start = $('#c-start').value;
-      if (!start || start > today) { toast('마지막 생리 시작일을 골라 주세요'); return true; }
       // 시작일부터 평소 기간만큼 생리한 날로 채움 (나중에 달력에서 고칠 수 있음)
       body.cycleDays = {};
       for (let i = 0; i < plen && addDays(start, i) <= today; i++) { CY()[addDays(start, i)] = { f: 2 }; body.cycleDays[addDays(start, i)] = { f: 2 }; }
@@ -1760,7 +1767,7 @@ document.addEventListener('click', async ev => {
     const list = mineOf(ds).filter(w => w !== x);
     if (list.length) S.data.mine[ds] = list; else delete S.data.mine[ds];
     save(); renderCal();
-    post({ mine: { date: ds, list } }).then(render).catch(failed);
+    post({ mineDays: { [ds]: list } }).then(render).catch(failed);
     return;
   }
   if (t.dataset.metric) { S.chartKeys = [t.dataset.metric]; save(); renderIb(); return; }
@@ -1793,7 +1800,7 @@ document.addEventListener('click', async ev => {
     const list = [...mineOf(ds), item];
     S.data.mine = S.data.mine || {}; S.data.mine[ds] = list;
     clearDrafts('mine-'); save(); renderCal(); toast('추가했어요');
-    post({ mine: { date: ds, list } }).then(render).catch(failed);
+    post({ mineDays: { [ds]: list } }).then(render).catch(failed);
   }
   if (a === 'prev' || a === 'next') { view = new Date(view.getFullYear(), view.getMonth() + (a === 'next' ? 1 : -1), 1); renderCal(); }
   if (a === 'edit') { clearDrafts('day-'); S.drafts['day-edit'] = ds; save(); renderCal(); }
@@ -1809,7 +1816,7 @@ document.addEventListener('click', async ev => {
     }
     if (value) S.data.days[ds] = value; else delete S.data.days[ds];
     stopEditing(); renderCal();
-    post({ day: { date: ds, value } }).then(render).catch(failed);
+    post({ dayEdits: { [ds]: value } }).then(render).catch(failed);
   }
   if (a === 'add-ib') {
     const n = id => { const v = $(id).value.trim().replace(',', '.'); const x = parseFloat(v); return isFinite(x) ? r1(x) : null; };
@@ -1864,9 +1871,9 @@ document.addEventListener('change', async e => {
   try {
     const b = JSON.parse(await e.target.files[0].text());
     if (!b || b.app !== 'my-health' || !b.data) throw new Error('bad');
-    const n = (b.data.inbody || []).length, d = Object.keys(b.data.mine || {}).length;
-    if (!confirm(`${new Date(b.saved).toLocaleDateString('ko-KR')} 백업으로 되돌릴까요?\n(인바디 ${n}개, 운동 기록 ${d}일)\n지금 기록은 이 백업으로 바뀌어요.`)) return;
-    S.data = blank(b.data); save(); render();
+    const n = (b.data.inbody || []).length, d = Object.keys(b.data.mine || {}).length, c = Object.values(b.data.cycle || {}).filter(x => x && x.f).length;
+    if (!confirm(`${new Date(b.saved).toLocaleDateString('ko-KR')} 백업으로 되돌릴까요?\n(인바디 ${n}개, 운동 기록 ${d}일, 생리 기록 ${c}일)\n지금 기록은 이 백업으로 바뀌어요.`)) return;
+    S.data = blank(b.data); S.pending = null; save(); render();
     await post({ restore: b.data }); render(); toast('백업에서 되살렸어요');
   } catch { toast('백업 파일을 읽지 못했어요'); }
   finally { e.target.value = ''; }

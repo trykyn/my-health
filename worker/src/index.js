@@ -6,9 +6,10 @@
 //   POST /h/{키}   { minutes, steps, date? }  ← 단축어. 그날 값을 덮어씀(같은 날 여러 번 보내도 안전)
 //                  값은 건강 샘플 목록(한 줄에 하나)이어도 됨 → 모두 더함
 //   GET  /d/{키}                              → { days, inbody, gym, mine, cycle, profile }
-//   POST /d/{키}   { restore?, inbody?, gym?, gymMeta?, gymSession?, day?, mine?, cycleDays?, profile? }  ← 앱. 보낸 항목만 바꿈
+//   POST /d/{키}   { restore?, inbody?, gymMeta?, gymSessions?, mineDays?, dayEdits?, cycleDays?, profile? }  ← 앱. 보낸 항목만 바꿈
+//                  ...Sessions / ...Days / dayEdits = { 날짜: 값 | null } 여러 날 한꺼번에
 //                  restore = 백업 파일 전체로 바꿈
-//                  mine = { date, list: [{ id, name, min?, kcal?, note?, gym? }] } 내가 적은 그날 운동 (빈 목록이면 지움)
+//                  mineDays = { 날짜: [{ id, name, min?, kcal?, note?, gym? }] } 내가 적은 그날 운동 (빈 목록이면 지움)
 //
 // 키는 앱이 처음 열릴 때 만든 32자리 무작위 문자열. 키를 아는 사람만 읽고 쓸 수 있음.
 // 저장소 (KV): STORE — data:{키} → 위 JSON 하나
@@ -81,13 +82,17 @@ export default {
         data.gym = data.gym || {};
         for (const k of ["plan", "routines", "custom"]) if (body.gymMeta[k] !== undefined) data.gym[k] = body.gymMeta[k];
       }
-      // 헬스: 그날 세트 기록 하나 (null 이면 지움)
-      if (body.gymSession && DATE_RE.test(body.gymSession.date || "")) {
+      // 날짜별 기록은 { 날짜: 값 } 으로 여러 날을 한 번에 받음 (오프라인에서 여러 날을 고쳐도 모두 저장되게).
+      // 예전 앱이 보내던 한 날짜 모양(gymSession / mine / day: { date, ... })도 그대로 받음.
+      const each = (map, fn) => { if (map && typeof map === "object") for (const [dt, v] of Object.entries(map).slice(0, 400)) if (DATE_RE.test(dt)) fn(dt, v); };
+      // 헬스: 그날 세트 기록 (null 이면 지움)
+      const setSession = (dt, v) => {
         data.gym = data.gym || {};
         data.gym.sessions = data.gym.sessions || {};
-        if (body.gymSession.value) data.gym.sessions[body.gymSession.date] = body.gymSession.value;
-        else delete data.gym.sessions[body.gymSession.date];
-      }
+        if (v && typeof v === "object") data.gym.sessions[dt] = v; else delete data.gym.sessions[dt];
+      };
+      each(body.gymSessions, setSession);
+      if (body.gymSession && DATE_RE.test(body.gymSession.date || "")) setSession(body.gymSession.date, body.gymSession.value);
       // 내 정보: 키 cm (BMI 계산용), 평소 생리 주기·기간 (기록이 쌓이기 전 예상용). 보낸 것만 바꿈
       if (body.profile && typeof body.profile === "object") {
         const p = { ...(data.profile || {}) }, b = body.profile;
@@ -109,20 +114,23 @@ export default {
           if (Object.keys(e).length) data.cycle[d] = e; else delete data.cycle[d];
         }
       }
-      // 내가 직접 추가한 운동 (그날 목록 통째로)
-      if (body.mine && DATE_RE.test(body.mine.date || "")) {
-        const list = (Array.isArray(body.mine.list) ? body.mine.list : []).slice(0, 30).map(x => ({
+      // 내가 직접 추가한 운동 (그날 목록 통째로, 빈 목록이면 지움)
+      const setMine = (dt, raw) => {
+        const list = (Array.isArray(raw) ? raw : []).slice(0, 30).map(x => ({
           id: String(x.id || "").slice(0, 20), name: String(x.name || "").slice(0, 40),
           min: num(x.min) == null ? undefined : Math.round(num(x.min)),
           kcal: num(x.kcal) == null ? undefined : Math.round(num(x.kcal)), note: x.note ? String(x.note).slice(0, 300) : undefined, gym: x.gym ? true : undefined,
         })).filter(x => x.id && x.name);
-        if (list.length) data.mine[body.mine.date] = list; else delete data.mine[body.mine.date];
-      }
+        if (list.length) data.mine[dt] = list; else delete data.mine[dt];
+      };
+      each(body.mineDays, setMine);
+      if (body.mine && DATE_RE.test(body.mine.date || "")) setMine(body.mine.date, body.mine.list);
       // 직접 고친 하루 기록 (null 이면 지움)
-      if (body.day && DATE_RE.test(body.day.date || "")) {
-        if (body.day.value) data.days[body.day.date] = { ...body.day.value, at: Date.now(), manual: true };
-        else delete data.days[body.day.date];
-      }
+      const setDay = (dt, v) => {
+        if (v && typeof v === "object") data.days[dt] = { ...v, at: Date.now(), manual: true }; else delete data.days[dt];
+      };
+      each(body.dayEdits, setDay);
+      if (body.day && DATE_RE.test(body.day.date || "")) setDay(body.day.date, body.day.value);
       await env.STORE.put(sk, JSON.stringify(data));
       return json(data);
     }
