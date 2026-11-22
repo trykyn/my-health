@@ -271,9 +271,7 @@ ol.steps b { font-weight: 600; }
 .cgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; }
 .cday { position: relative; display: grid; place-items: center; height: 46px; border-radius: 12px; }
 .cday .cn { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; border: 2px solid transparent; }
-.cday.f1 .cn { background: color-mix(in srgb, var(--accent) 35%, var(--card)); }
-.cday.f2 .cn { background: color-mix(in srgb, var(--accent) 65%, var(--card)); font-weight: 700; }
-.cday.f3 .cn { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cday.p .cn { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .cday.pp .cn { border: 2px dashed var(--accent); }
 .cday.fw .cn { background: color-mix(in srgb, var(--c-f) 16%, transparent); }
 .cday.ov .cn { border-color: var(--c-f); }
@@ -289,6 +287,9 @@ ol.steps b { font-weight: 600; }
 .cy-n { font-size: 13px; text-align: right; color: var(--muted); }
 #rest { position: fixed; left: 12px; right: 12px; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 6; max-width: 516px; margin: 0 auto;
   display: flex; align-items: center; gap: 10px; background: var(--ink); color: var(--bg); border-radius: 16px; padding: 10px 14px; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+body.flash::after { content: ''; position: fixed; inset: 0; z-index: 50; pointer-events: none; background: var(--accent); opacity: 0; animation: flash 1.2s ease-out 2; }
+@keyframes flash { from { opacity: .45; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { body.flash::after { animation-duration: 2s; animation-iteration-count: 1; } }
 #rest b { font-size: 22px; font-weight: 800; min-width: 52px; }
 #rest i { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.2); overflow: hidden; }
 #rest s { display: block; height: 100%; background: var(--accent); text-decoration: none; }
@@ -360,6 +361,7 @@ function newKey() {
   return Array.from(crypto.getRandomValues(new Uint8Array(32)), b => abc[b % abc.length]).join('');
 }
 const pushUrl = () => `${API}/h/${S.key}`;
+const KEY_OK = k => /^[A-Za-z0-9]{24,64}$/.test(k || '');
 
 // ── 날짜 ──
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -385,7 +387,9 @@ function checkNewDay() {
 }
 
 // ── 서버와 주고받기 ──
-let syncing = false, lastSync = '';
+// 응답이 너무 오래 안 오면 포기 (약한 인터넷에서 저장 줄이 멈추지 않게). 예전 iOS 는 그냥 기다림
+const tmo = ms => (AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
+let syncing = false, lastSync = '', writes = 0; // writes: 서버에 저장이 끝난 횟수
 const typing = () => !!(document.activeElement && document.activeElement.matches('input'));
 async function sync() {
   if (syncing) return;
@@ -395,10 +399,12 @@ async function sync() {
     if (S.pending) await post({});
     await chain.catch(() => {});
     if (S.pending) return;
-    const r = await fetch(`${API}/d/${S.key}`, { cache: 'no-store' });
+    const w = writes, key = S.key;
+    const r = await fetch(`${API}/d/${S.key}`, { cache: 'no-store', signal: tmo(15000) });
     if (!r.ok) throw new Error(r.status);
     const text = await r.text();
-    if (S.pending) return; // 받는 사이에 새로 적은 게 있으면 이번 것은 버림
+    // 받는 사이에 새로 적었거나 저장이 끝났으면(그쪽이 더 새 값) 이번 것은 버림
+    if (S.pending || writes !== w || key !== S.key) return;
     // 바뀐 게 없으면 다시 그리지 않음 (1분마다 화면이 깜빡이거나 그림이 튀지 않게)
     if (text === lastSync) return;
     lastSync = text;
@@ -414,10 +420,13 @@ async function sync() {
 // 저장은 한 줄로 차례차례 (빠르게 여러 번 눌러도 늦게 온 답이 새 기록을 덮지 않게)
 let chain = Promise.resolve();
 // 날짜별 기록은 { 날짜: 값 } 으로 모아 둠: 오프라인이거나 빨리 여러 날을 고쳐도 앞의 날이 덮이지 않게
-const DAY_MAPS = ['cycleDays', 'mineDays', 'gymSessions', 'dayEdits'];
+const DAY_MAPS = ['cycleDays', 'mineDays', 'gymSessions', 'dayEdits', 'planWeeks'];
+// 인바디는 추가(ibAdd)·삭제(ibDel)만 차례대로 쌓아 보냄 → 서버가 그대로 적용 (다른 기기 기록을 지우지 않음)
+const LISTS = ['ibAdd', 'ibDel'];
 function queue(body) {
   const prev = S.pending || {}, next = { ...prev, ...body };
   for (const k of DAY_MAPS) if (body[k]) next[k] = { ...(prev[k] || {}), ...body[k] };
+  for (const k of LISTS) if (body[k]) next[k] = [...(prev[k] || []), ...body[k]];
   S.pending = next;
   save();
 }
@@ -428,7 +437,8 @@ function post(body) {
 async function flush() {
   const send = S.pending;
   if (!send) return;
-  const r = await fetch(`${API}/d/${S.key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(send) });
+  if (!Object.keys(send).length) { S.pending = null; save(); return; }
+  const r = await fetch(`${API}/d/${S.key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(send), signal: tmo(15000) });
   // 서버가 받지 않는 내용(너무 큼 등)은 계속 다시 보내지 않음. 안 그러면 새 기록을 영영 못 받아 옴
   if (r.status >= 400 && r.status < 500 && r.status !== 429) {
     if (S.pending === send) S.pending = null;
@@ -438,6 +448,7 @@ async function flush() {
   if (!r.ok) throw new Error(r.status);
   const text = await r.text();
   // 보내는 동안 또 바뀐 게 없을 때만 서버 값을 받아들임 (있으면 다음 차례에 그것까지 보냄)
+  writes++;
   if (S.pending === send) { S.pending = null; S.data = blank(JSON.parse(text)); lastSync = text; }
   save();
 }
@@ -484,7 +495,7 @@ const dayMin = ds => Math.max((S.data.days[ds] || {}).min || 0, mineOf(ds).reduc
 // 첫 화면: 위에는 오늘 요약(크게), 아래에 달력. 달력에서 다른 날을 누르면 달력 밑에 그날 자세히.
 function renderCal() {
   const today = todayStr();
-  const neverSynced = !Object.values(S.data.days).some(r => r.at && !r.manual), unfinished = unfinishedGym();
+  const neverSynced = !Object.values(S.data.days).some(watchAt), unfinished = unfinishedGym();
   $('#v-cal').innerHTML = `
     ${neverSynced ? `<div class="banner"><div><b>Apple Watch 연결하기</b>운동이 끝나면 여기로 바로 올라오게 설정해요.</div><button class="btn small" data-act="setup">설정 방법</button></div>` : ''}
     ${unfinished.length ? `<div class="banner"><div><b>${shortDate(unfinished[0])} 헬스를 아직 안 끝냈어요</b>끝내야 계획 체크와 오늘 한 운동에 들어가요.</div><button class="btn small" data-tab="gym">정리하기</button></div>` : ''}
@@ -507,9 +518,11 @@ function bigRing(min) {
 // 아이폰이 잠겨 있으면 단축어가 건강 데이터를 못 읽어서 밤 10시 자동화가 조용히 실패할 수 있음 → 앱을 연 김에 직접 보내기.
 // 단축어가 끝나고 이 앱으로 돌아오면 visibilitychange → sync 로 바로 보임.
 const SHORTCUT = '건강 기록 보내기';
+// 그날 워치 기록을 받은 시각 (wat: 숫자를 직접 고쳐도 남음. 예전 기록은 at)
+const watchAt = r => r.wat || (r.at && !r.manual ? r.at : 0);
 function watchLine(rec) {
-  if (!Object.values(S.data.days).some(r => r.at && !r.manual)) return ''; // 아직 연결 전이면 위 배너가 안내함
-  const got = rec.at && !rec.manual ? new Date(rec.at) : null;
+  if (!Object.values(S.data.days).some(watchAt)) return ''; // 아직 연결 전이면 위 배너가 안내함
+  const got = watchAt(rec) ? new Date(watchAt(rec)) : null;
   const txt = got ? `⌚ ${got.getHours() < 12 ? '오전' : '오후'} ${got.getHours() % 12 || 12}:${String(got.getMinutes()).padStart(2, '0')}에 받은 워치 기록` : '⌚ 오늘 워치 기록이 아직 안 왔어요';
   return `<div class="watch-line"><span>${txt}</span><a class="btn small ghost" href="shortcuts://run-shortcut?name=${encodeURIComponent(SHORTCUT)}">지금 가져오기</a></div>`;
 }
@@ -895,12 +908,17 @@ function bindChart() {
     tip.hidden = false;
     cross.setAttribute('x1', best.x); cross.setAttribute('x2', best.x); cross.setAttribute('visibility', 'visible');
     svg.querySelectorAll('circle').forEach(c => c.setAttribute('r', c.dataset.d === best.date ? +c.dataset.r + 2 : c.dataset.r));
+    // 손가락으로 볼 때는 4초 뒤 저절로 닫힘 (마우스처럼 '벗어남'이 없어서)
+    clearTimeout(bindChart.t);
+    if (ev.pointerType !== 'mouse') bindChart.t = setTimeout(hide, 4000);
   };
-  const hide = () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); svg.querySelectorAll('circle').forEach(c => c.setAttribute('r', c.dataset.r)); };
+  const hide = bindChart.hide = () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); svg.querySelectorAll('circle').forEach(c => c.setAttribute('r', c.dataset.r)); };
   svg.addEventListener('pointermove', show);
   svg.addEventListener('pointerdown', show);
   svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hide(); });
 }
+// 그래프 밖을 누르면 말풍선 닫기
+document.addEventListener('pointerdown', e => { const t = $('#tip'); if (t && !t.hidden && bindChart.hide && !e.target.closest('#chart svg')) bindChart.hide(); }, true);
 
 // ── 운동 그림: 직접 그린 막대 인형이 시작 자세(A) ↔ 끝 자세(B)를 천천히 오가는 애니메이션 ──
 // 각도는 도(°): 0 = 오른쪽(앞), 90 = 아래, -90 = 위, 180 = 뒤. 사람은 오른쪽을 보고 있음 (옆에서 본 모습).
@@ -1141,7 +1159,11 @@ let planDay = null;
 const planOf = ds => { const d = parseYmd(ds); return ((G().plan[ymd(mondayOf(d))] || {})[(d.getDay() + 6) % 7]) || []; };
 const didOn = (ds, n) => mineOf(ds).some(x => x.name === n) || (n === '헬스' && !!(G().sessions[ds] || {}).end);
 const shortName = n => ({ 필라테스: '필라', 홈트레이닝: '홈트' }[n] || n.slice(0, 3));
-const planChoices = () => [...new Set([...QUICK, ...Object.values(S.data.mine || {}).flat().map(x => x.name)])].slice(0, 12);
+// 계획 고르기: 자주 쓰는 것 + 그날 이미 넣은 것(끌 수 있게) + 최근에 한 운동 순
+const planChoices = (cur = []) => {
+  const recent = Object.keys(S.data.mine || {}).sort().reverse().flatMap(d => S.data.mine[d].map(x => x.name));
+  return [...new Set([...QUICK, ...cur, ...recent])].slice(0, Math.max(12, new Set([...QUICK, ...cur]).size));
+};
 
 function planCard() {
   const wk = ymd(gymWeek), plan = G().plan[wk] || {}, today = todayStr();
@@ -1168,7 +1190,7 @@ function planCard() {
     <div class="pweek">${cells}</div>
     ${editing ? `<div class="pedit">
       <p class="sub" style="margin:0 0 6px;font-size:13px">${longDate(planDay)}에 할 운동을 골라요</p>
-      <div class="chips">${planChoices().map(n => `<button class="chip pick ${(plan[di] || []).includes(n) ? 'on' : ''}" data-plan-toggle="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+      <div class="chips">${planChoices(plan[di] || []).map(n => `<button class="chip pick ${(plan[di] || []).includes(n) ? 'on' : ''}" data-plan-toggle="${esc(n)}">${esc(n)}</button>`).join('')}</div>
       <div class="detail-foot"><span></span><button class="btn small ghost" data-act="plan-close">닫기</button></div>
     </div>` : `<p class="sub" style="margin:8px 0 0;font-size:13px">요일을 눌러 계획을 넣어요. 그날 같은 운동을 적으면 자동으로 체크돼요.</p>`}
     ${!total && prevHas ? `<button class="btn ghost small more" data-act="plan-copy">지난주 계획 그대로 가져오기</button>` : ''}
@@ -1320,7 +1342,8 @@ function saveSession(ds, now) {
   clearTimeout(gymSaveT);
   gymSaveT = setTimeout(() => post({}).catch(failed), now ? 0 : 800);
 }
-const saveMeta = () => post({ gymMeta: { plan: G().plan, routines: G().routines, custom: G().custom } }).catch(failed);
+// wk 를 주면 그 주 계획만, 아니면 루틴·직접 추가한 운동 이름
+const saveMeta = wk => post(wk ? { planWeeks: { [wk]: G().plan[wk] || null } } : { gymMeta: { routines: G().routines, custom: G().custom } }).catch(failed);
 
 // 헬스 기록 중(헬스 탭에서 아직 안 끝냄)에는 화면이 꺼지지 않게
 let wakeLock = null;
@@ -1342,7 +1365,10 @@ function startRest(sec = 60) {
   tickRest();
 }
 function beep() {
+  // 무음 모드에선 아이폰이 웹 소리를 막음 → 화면을 깜빡여서도 알림
+  document.body.classList.remove('flash'); void document.body.offsetWidth; document.body.classList.add('flash');
   try {
+    if (audioCtx.state !== 'running') audioCtx.resume();
     for (const o of [0, 0.25, 0.5]) {
       const os = audioCtx.createOscillator(), g = audioCtx.createGain();
       os.frequency.value = 880; g.gain.value = 0.18; os.connect(g); g.connect(audioCtx.destination);
@@ -1391,14 +1417,14 @@ function gymClick(t) {
     const d = parseYmd(planDay), wk = ymd(mondayOf(d)), di = (d.getDay() + 6) % 7, n = t.dataset.planToggle;
     const p = (G().plan[wk] = G().plan[wk] || {}), l = p[di] || [];
     p[di] = l.includes(n) ? l.filter(x => x !== n) : [...l, n];
-    save(); renderGym(); saveMeta(); return true;
+    save(); renderGym(); saveMeta(wk); return true;
   }
   if (a === 'plan-close') { planDay = null; renderGym(); return true; }
   if (a === 'wk-prev' || a === 'wk-next') { gymWeek = new Date(gymWeek.getFullYear(), gymWeek.getMonth(), gymWeek.getDate() + (a === 'wk-next' ? 7 : -7)); planDay = null; renderGym(); return true; }
   if (a === 'plan-copy') {
     const prev = ymd(new Date(gymWeek.getFullYear(), gymWeek.getMonth(), gymWeek.getDate() - 7));
     G().plan[ymd(gymWeek)] = JSON.parse(JSON.stringify(G().plan[prev] || {}));
-    save(); renderGym(); saveMeta(); toast('지난주 계획을 가져왔어요'); return true;
+    save(); renderGym(); saveMeta(ymd(gymWeek)); toast('지난주 계획을 가져왔어요'); return true;
   }
   if (t.dataset.start !== undefined) {
     const r = G().routines.find(x => x.id === t.dataset.start);
@@ -1498,11 +1524,10 @@ function gymClickAny(t) {
 }
 
 // ── 생리 주기 ──
-// cycle = { 날짜: { f: 0~3 (0 = 생리 아님, 1 적음, 2 보통, 3 많음) } }
+// cycle = { 날짜: { f } } — f > 0 = 생리한 날 (양은 안 적음, 예전 기록의 1~3도 모두 '했음'), f: 0 = '끝났어요'를 누른 날
 // 생리한 날을 묶어 한 번의 생리로 보고, 최근 6번의 시작일 간격(가운데 값)으로 다음 예정일을 어림함.
 // 기록이 2번 쌓이기 전까지는 처음에 적은 평소 주기·기간(profile.cycleLen / periodLen)을 씀.
 // 배란일 = 다음 예정일 14일 전, 가임기 = 배란일 5일 전 ~ 1일 뒤 (흔히 쓰는 어림).
-const FLOW = ['없음', '적음', '보통', '많음'];
 const CY = () => (S.data.cycle = S.data.cycle || {});
 const addDays = (ds, n) => { const d = parseYmd(ds); return ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)); };
 const diffDays = (a, b) => Math.round((parseYmd(b) - parseYmd(a)) / 864e5);
@@ -1591,11 +1616,14 @@ function cycHero(I) {
   </div>`;
   let ring, facts, action;
   if (I.ongoing) {
-    const end = addDays(I.L.start, I.periodLen - 1), f = flowOf(today);
+    const end = addDays(I.L.start, I.periodLen - 1), f = flowOf(today) > 0;
     ring = cycRing(I, `${I.day}<small>일째</small>`, '생리 중');
     facts = `<span class="pill done">생리 ${I.day}일째</span>${end >= today ? `<div class="sub">${md(end)}쯤 끝날 것 같아요</div>` : ''}`;
-    action = `<p class="sub" style="margin:12px 0 6px;font-size:13px">${f ? '오늘 양' : '오늘도 생리 중이에요?'}</p>
-      <div class="chips" style="margin:0">${[1, 2, 3].map(i => `<button class="chip pick ${f === i ? 'on' : ''}" data-cyc-flow="${i}" data-date="${today}">${FLOW[i]}</button>`).join('')}
+    // 오늘 이미 체크했으면 '끝났어요'를 안 보여 줌 (오늘 기록을 지워 기간이 하루 짧아지지 않게). 내일 물어봄
+    action = f ? `<p class="sub" style="margin:12px 0 6px;font-size:13px">✓ 오늘도 체크했어요</p>
+      <div class="chips" style="margin:0"><button class="chip pick" data-cyc-flow="" data-date="${today}">취소</button></div>`
+      : `<p class="sub" style="margin:12px 0 6px;font-size:13px">오늘도 생리 중이에요?</p>
+      <div class="chips" style="margin:0"><button class="chip pick" data-cyc-flow="2" data-date="${today}">네, 오늘도</button>
       <button class="chip pick" data-cyc-flow="0" data-date="${today}">끝났어요</button></div>`;
   } else {
     const o = addDays(I.next, -14), fs = addDays(o, -5), fe = addDays(o, 1);
@@ -1616,10 +1644,10 @@ function cycCalendar(I) {
   let cells = '<span></span>'.repeat(off);
   for (let d = 1; d <= n; d++) {
     const ds = ymd(new Date(y, m, d)), f = flowOf(ds);
-    const cls = ['cday', f && 'p f' + f, !f && pp.has(ds) && 'pp', !f && fw.has(ds) && 'fw', ov.has(ds) && 'ov', ds === today && 'today'].filter(Boolean).join(' ');
+    const cls = ['cday', f > 0 && 'p', !f && pp.has(ds) && 'pp', !f && fw.has(ds) && 'fw', ov.has(ds) && 'ov', ds === today && 'today'].filter(Boolean).join(' ');
     const inner = `<span class="cn num">${d}</span>`;
     cells += ds > today ? `<span class="${cls}">${inner}</span>`
-      : `<button class="${cls}" data-cday="${ds}" aria-pressed="${!!f}" aria-label="${longDate(ds)} 생리">${inner}</button>`;
+      : `<button class="${cls}" data-cday="${ds}" aria-pressed="${f > 0}" aria-label="${longDate(ds)} 생리">${inner}</button>`;
   }
   return `<div class="card">
     <div class="month-head">
@@ -1669,10 +1697,11 @@ function setCycDay(ds, f) {
 }
 function cycClick(t) {
   const a = t.dataset.act, today = todayStr();
-  // 달력: 누르면 생리한 날로 체크(보통), 다시 누르면 지움. 오늘을 지우면 '끝났어요'와 같음
-  if (t.dataset.cday) { const ds = t.dataset.cday; setCycDay(ds, flowOf(ds) ? (ds === today ? 0 : null) : 2); return true; }
+  // 달력: 누르면 생리한 날로 체크, 다시 누르면 지움. 오늘을 지우면 '끝났어요'와 같음
+  if (t.dataset.cday) { const ds = t.dataset.cday; setCycDay(ds, flowOf(ds) > 0 ? (ds === today ? 0 : null) : 2); return true; }
   if (t.dataset.cycFlow !== undefined) {
-    const ds = t.dataset.date || today, f = +t.dataset.cycFlow, wasNone = !cycleInfo().ongoing && ds === today && f > 0 && !flowOf(ds);
+    // data-cyc-flow: 2 = 생리한 날, 0 = 끝났어요, 빈 값 = 오늘 체크 취소
+    const ds = t.dataset.date || today, f = t.dataset.cycFlow === '' ? null : +t.dataset.cycFlow, wasNone = !cycleInfo().ongoing && ds === today && f > 0 && !flowOf(ds);
     setCycDay(ds, f);
     if (wasNone) toast('기록했어요. 몸 잘 챙겨요');
     return true;
@@ -1723,12 +1752,14 @@ function renderSettings() {
         <li><b>단축어</b> 앱 → 아래 <b>단축어</b> 탭 → 오른쪽 위 <b>＋</b>. 이름은 <b>건강 기록 보내기</b>.</li>
         <li><b>건강 샘플 찾기</b> 추가 → 유형 <b>운동하기 시간</b>, 필터 <b>시작일</b> · <b>오늘임</b>.</li>
         <li><b>건강 샘플 찾기</b> 하나 더 → 유형 <b>걸음</b>, 필터 <b>시작일</b> · <b>오늘임</b>.</li>
-        <li><b>URL의 콘텐츠 가져오기</b> 추가 → URL에 위 주소 붙여넣기 → 펼쳐서 메소드 <b>POST</b>, 헤더는 비워 두고, 본문 요청 <b>JSON</b> → <b>새로운 필드 추가 → 텍스트</b>로 2개:
+        <li><b>날짜 포맷</b> 추가 → 날짜는 <b>현재 날짜</b>, 날짜 형식 <b>사용자 설정</b> → 형식 문자열에 <code>yyyy-MM-dd</code>. (여행 가서 시차가 있어도 휴대폰 날짜로 저장돼요)</li>
+        <li><b>URL의 콘텐츠 가져오기</b> 추가 → URL에 위 주소 붙여넣기 → 펼쳐서 메소드 <b>POST</b>, 헤더는 비워 두고, 본문 요청 <b>JSON</b> → <b>새로운 필드 추가 → 텍스트</b>로 3개:
           <table class="field-tbl">
             <tr><td>키 <code>minutes</code></td><td>값: 1번 '건강 샘플' 변수</td></tr>
             <tr><td>키 <code>steps</code></td><td>값: 2번 '건강 샘플' 변수</td></tr>
+            <tr><td>키 <code>date</code></td><td>값: '포맷된 날짜' 변수</td></tr>
           </table>
-          <span class="sub">통계 계산은 필요 없어요. 샘플을 그대로 보내면 서버가 더해요.</span></li>
+          <span class="sub">통계 계산은 필요 없어요. 샘플을 그대로 보내면 서버가 더해요. 예전에 만든 단축어에 <code>date</code>가 없으면 독일 날짜로 저장돼요.</span></li>
         <li>빨간 줄 "설정에서 이 동작을 허용할 수 있습니다"가 보이면 눌러서 허용하거나, 설정 → 앱 → 단축어 → 고급에서 데이터 공유를 허용해요.</li>
         <li>▶︎ 눌러서 한 번 실행 → 건강 데이터 접근 <b>허용</b>. "저장됨 …"이 나오고 이 앱 달력에 오늘 기록이 보이면 성공!</li>
       </ol>
@@ -1756,6 +1787,7 @@ function renderSettings() {
       <h2 style="margin-top:4px">다른 기기에서 같이 보기</h2>
       <p class="sub" style="margin:0 0 8px">위 연결 키를 다른 기기 앱에 넣으면 같은 기록을 봐요.</p>
       <div class="inline"><label class="fld">다른 연결 키 넣기<input id="newkey" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="32자리 키"></label><button class="btn small ghost" data-act="usekey">바꾸기</button></div>
+      ${(S.prevKeys || []).length ? `<p class="sub" style="margin:10px 0 0;font-size:13px">바로 전 키 …${esc(S.prevKeys.at(-1).slice(-4))} · <button class="link" data-act="prevkey">그 키로 돌아가기</button></p>` : ''}
     </div>`;
 }
 
@@ -1796,7 +1828,7 @@ document.addEventListener('click', async ev => {
     const e = S.data.inbody.find(x => x.id === t.dataset.delIb);
     if (!e || !confirm(`${shortDate(e.date)} 인바디 기록을 지울까요?`)) return;
     S.data.inbody = S.data.inbody.filter(x => x !== e); save(); renderIb();
-    saveSoon({ inbody: S.data.inbody }); return;
+    saveSoon({ ibDel: [e.id] }); return;
   }
   const a = t.dataset.act;
   if (a === 'mine-open') { clearDrafts('mine-'); S.drafts['mine-open'] = ds; save(); renderCal(); setTimeout(() => scrollToEl($('#m-name'), innerHeight / 3), 50); }
@@ -1839,7 +1871,7 @@ document.addEventListener('click', async ev => {
     const e = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), date, w: n('#i-w'), m: n('#i-m'), f: n('#i-f') };
     if (e.w == null && e.m == null && e.f == null) { toast('숫자를 하나 이상 적어 주세요'); return; }
     S.data.inbody.push(e); clearDrafts('ib-'); save(); renderIb(); toast('저장했어요');
-    saveSoon({ inbody: S.data.inbody });
+    saveSoon({ ibAdd: [e] });
   }
   if (a === 'setup') { renderSettings(); $('#settings').showModal(); }
   if (a === 'close') $('#settings').close();
@@ -1872,14 +1904,24 @@ document.addEventListener('click', async ev => {
       S.backupAt = Date.now(); S.keySaved = true; save(); renderSettings(); render(); toast('백업 파일을 만들었어요');
     } catch (e) { if (!e || e.name !== 'AbortError') toast('백업을 만들지 못했어요'); }
   }
-  if (a === 'usekey') {
-    const k = $('#newkey').value.trim();
+  if (a === 'usekey' || a === 'prevkey') {
+    const k = a === 'prevkey' ? S.prevKeys.at(-1) : $('#newkey').value.trim();
     if (!/^[A-Za-z0-9]{24,64}$/.test(k)) { toast('키 모양이 맞지 않아요'); return; }
-    if (!confirm('이 기기의 기록 대신 그 키의 기록을 볼까요?')) return;
-    S.key = k; S.data = blank(); S.pending = null; lastSync = ''; save();
-    $('#settings').close(); render(); sync();
+    if (k === S.key) { toast('지금 쓰는 키예요'); return; }
+    if (!confirm(`이 기기의 기록 대신 그 키의 기록을 볼까요?${S.keySaved ? '' : '\n\n⚠️ 지금 키를 아직 저장하지 않았어요. 아래에 "바로 전 키"로 남겨 두지만, 먼저 "연결 키 복사"로 저장해 두는 게 안전해요.'}`)) return;
+    if (!(await switchKey(k))) toast('아직 못 보낸 기록이 있어요. 인터넷 연결 후 다시 해 주세요');
   }
 });
+// 연결 키 바꾸기: 못 보낸 기록을 먼저 보내고, 이전 키는 S.prevKeys 에 남김 (잘못 넣어도 돌아갈 수 있게)
+async function switchKey(k) {
+  if (S.pending) { try { await post({}); } catch {} }
+  await chain.catch(() => {});
+  if (S.pending) return false;
+  S.prevKeys = [...(S.prevKeys || []).filter(x => x !== S.key && x !== k), S.key].slice(-5);
+  S.key = k; S.data = blank(); S.keySaved = false; lastSync = ''; save();
+  $('#settings').close(); render(); await sync();
+  return true;
+}
 // 백업 불러오기
 document.addEventListener('change', async e => {
   if (e.target.id !== 'restore-file' || !e.target.files[0]) return;
@@ -1888,6 +1930,16 @@ document.addEventListener('change', async e => {
     if (!b || b.app !== 'my-health' || !b.data) throw new Error('bad');
     const n = (b.data.inbody || []).length, d = Object.keys(b.data.mine || {}).length, c = Object.values(b.data.cycle || {}).filter(x => x && x.f).length;
     if (!confirm(`${new Date(b.saved).toLocaleDateString('ko-KR')} 백업으로 되돌릴까요?\n(인바디 ${n}개, 운동 기록 ${d}일, 생리 기록 ${c}일)\n지금 기록은 이 백업으로 바뀌어요.`)) return;
+    // 다른 키로 만든 백업(예: 예전 휴대폰): 단축어는 아직 그 키 주소로 보내고 있으니 그 키로 옮겨 감.
+    // 그 키에 서버 기록이 남아 있으면 그게 백업보다 새것 → 그대로 불러옴. 비어 있으면 백업으로 채움
+    if (KEY_OK(b.key) && b.key !== S.key && confirm('이 백업은 다른 연결 키로 만든 거예요. 아이폰 단축어가 그 키로 보내고 있을 수 있어요.\n그 키로 바꿀까요? (추천)')) {
+      const r = await fetch(`${API}/d/${b.key}`, { cache: 'no-store', signal: tmo(15000) });
+      if (!r.ok) throw new Error(r.status);
+      const sv = await r.json(), has = Object.keys(sv.days || {}).length || (sv.inbody || []).length || Object.keys(sv.mine || {}).length || Object.keys(sv.cycle || {}).length;
+      if (!(await switchKey(b.key))) { toast('아직 못 보낸 기록이 있어요. 인터넷 연결 후 다시 해 주세요'); return; }
+      S.keySaved = true; save();
+      if (has) { render(); toast('그 키의 기록을 불러왔어요'); return; }
+    }
     S.data = blank(b.data); S.pending = null; save(); render();
     await post({ restore: b.data }); render(); toast('백업에서 되살렸어요');
   } catch { toast('백업 파일을 읽지 못했어요'); }
@@ -1918,7 +1970,7 @@ for (const type of ['gesturestart', 'gesturechange']) document.addEventListener(
 render();
 sync();
 // 앱으로 돌아올 때, 그리고 켜 둔 동안 1분마다 새 기록 확인
-document.addEventListener('visibilitychange', () => { if (document.hidden) updateWakeLock(); else { if (!typing()) render(); sync(); } });
+document.addEventListener('visibilitychange', () => { updateWakeLock(); if (!document.hidden) { if (!typing()) render(); sync(); } });
 setInterval(() => { if (!document.hidden) sync(); }, 60000);
 
 // 오프라인 + 새 버전 바로 적용 (다른 앱들과 같은 방식)

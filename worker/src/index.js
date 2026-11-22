@@ -6,8 +6,9 @@
 //   POST /h/{키}   { minutes, steps, date? }  ← 단축어. 그날 값을 덮어씀(같은 날 여러 번 보내도 안전)
 //                  값은 건강 샘플 목록(한 줄에 하나)이어도 됨 → 모두 더함
 //   GET  /d/{키}                              → { days, inbody, gym, mine, cycle, profile }
-//   POST /d/{키}   { restore?, inbody?, gymMeta?, gymSessions?, mineDays?, dayEdits?, cycleDays?, profile? }  ← 앱. 보낸 항목만 바꿈
-//                  ...Sessions / ...Days / dayEdits = { 날짜: 값 | null } 여러 날 한꺼번에
+//   POST /d/{키}   { restore?, ibAdd?, ibDel?, gymMeta?, planWeeks?, gymSessions?, mineDays?, dayEdits?, cycleDays?, profile? }  ← 앱. 보낸 항목만 바꿈
+//                  ...Sessions / ...Days / dayEdits / planWeeks = { 날짜: 값 | null } 여러 날 한꺼번에
+//                  ibAdd = [인바디 기록] (같은 id 면 바꿈), ibDel = [id] → 다른 기기에서 넣은 기록을 지우지 않음
 //                  restore = 백업 파일 전체로 바꿈
 //                  mineDays = { 날짜: [{ id, name, min?, kcal?, note?, gym? }] } 내가 적은 그날 운동 (빈 목록이면 지움)
 //
@@ -54,7 +55,7 @@ export default {
         : num((Array.isArray(body.steps) ? body.steps : String(body.steps).split(/[\r\n]+/)).map(x => String(x).replace(/\D/g, "")));
       if (min != null) day.min = Math.round(min);
       if (steps != null) day.steps = Math.round(steps);
-      day.at = Date.now();
+      day.at = day.wat = Date.now(); // wat = 워치 기록 받은 시각 (직접 고쳐도 남김)
       delete day.manual; // 워치 기록이 오면 직접 고친 표시는 없앰
       data.days[date] = day;
       await env.STORE.put(sk, JSON.stringify(data));
@@ -70,12 +71,20 @@ export default {
       let body;
       try { body = JSON.parse(text); } catch { return json({ error: "bad_json" }, 400); }
       let data = await load();
+      const before = JSON.stringify(data);
       // 백업 파일로 되살리기: 기록 전체를 바꿈
       if (body.restore && typeof body.restore === "object") {
         const r = body.restore, obj = v => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
         data = { days: obj(r.days), inbody: Array.isArray(r.inbody) ? r.inbody : [], gym: obj(r.gym), mine: obj(r.mine), cycle: obj(r.cycle), profile: obj(r.profile) };
       }
-      if (Array.isArray(body.inbody)) data.inbody = body.inbody;
+      if (Array.isArray(body.inbody)) data.inbody = body.inbody; // 예전 앱: 목록 통째로
+      // 인바디 추가·삭제 (보낸 순서대로: 추가 → 삭제)
+      if (Array.isArray(body.ibAdd)) for (const e of body.ibAdd.slice(0, 100)) {
+        if (!e || typeof e !== "object" || !e.id || !DATE_RE.test(e.date || "")) continue;
+        data.inbody = data.inbody.filter(x => x.id !== e.id);
+        data.inbody.push(e);
+      }
+      if (Array.isArray(body.ibDel)) { const del = new Set(body.ibDel.map(String)); data.inbody = data.inbody.filter(x => !del.has(String(x.id))); }
       if (body.gym && typeof body.gym === "object") data.gym = body.gym;
       // 헬스: 주간 계획·루틴·직접 추가한 운동 이름 (보낸 것만 바꿈)
       if (body.gymMeta && typeof body.gymMeta === "object") {
@@ -92,6 +101,12 @@ export default {
         if (v && typeof v === "object") data.gym.sessions[dt] = v; else delete data.gym.sessions[dt];
       };
       each(body.gymSessions, setSession);
+      // 헬스 주간 계획: { 그 주 월요일: { 요일: [운동] } | null } 바뀐 주만
+      each(body.planWeeks, (wk, v) => {
+        data.gym = data.gym || {};
+        data.gym.plan = data.gym.plan || {};
+        if (v && typeof v === "object") data.gym.plan[wk] = v; else delete data.gym.plan[wk];
+      });
       if (body.gymSession && DATE_RE.test(body.gymSession.date || "")) setSession(body.gymSession.date, body.gymSession.value);
       // 내 정보: 키 cm (BMI 계산용), 평소 생리 주기·기간 (기록이 쌓이기 전 예상용). 보낸 것만 바꿈
       if (body.profile && typeof body.profile === "object") {
@@ -104,7 +119,7 @@ export default {
         pick("height", 80, 250, 1); pick("cycleLen", 15, 60); pick("periodLen", 1, 14);
         data.profile = p;
       }
-      // 생리 기록: { 날짜: { f: 0~3 (0 = 생리 아님, 1 적음, 2 보통, 3 많음) } | null }
+      // 생리 기록: { 날짜: { f } | null } — f > 0 = 생리한 날 (지금 앱은 2만 보냄, 예전 1·3 도 받음), 0 = '끝났어요'
       if (body.cycleDays && typeof body.cycleDays === "object") {
         data.cycle = data.cycle || {};
         for (const [d, v] of Object.entries(body.cycleDays).slice(0, 400)) {
@@ -127,11 +142,14 @@ export default {
       if (body.mine && DATE_RE.test(body.mine.date || "")) setMine(body.mine.date, body.mine.list);
       // 직접 고친 하루 기록 (null 이면 지움)
       const setDay = (dt, v) => {
-        if (v && typeof v === "object") data.days[dt] = { ...v, at: Date.now(), manual: true }; else delete data.days[dt];
+        const wat = (data.days[dt] || {}).wat; // 워치 기록 받은 시각은 남김
+        if (v && typeof v === "object") data.days[dt] = { ...v, at: Date.now(), manual: true, ...(wat ? { wat } : {}) }; else delete data.days[dt];
       };
       each(body.dayEdits, setDay);
       if (body.day && DATE_RE.test(body.day.date || "")) setDay(body.day.date, body.day.value);
-      await env.STORE.put(sk, JSON.stringify(data));
+      // 바뀐 게 없으면 저장하지 않음 (무료 요금제 하루 저장 횟수 아끼기)
+      const out = JSON.stringify(data);
+      if (out !== before) await env.STORE.put(sk, out);
       return json(data);
     }
     return json({ error: "not_found" }, 404);
