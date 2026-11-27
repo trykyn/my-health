@@ -239,6 +239,7 @@ ol.steps b { font-weight: 600; }
 .gs.done .gs-n { background: var(--accent); color: var(--accent-ink); }
 .gs.done input { background: var(--soft); border-color: transparent; }
 .gx-foot { display: flex; gap: 14px; padding-left: 28px; }
+.pk-c { display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
 .reco-btn { width: 100%; background: color-mix(in srgb, var(--c-f) 18%, var(--card)); color: var(--ink); }
 .reco-why { background: var(--field); border-radius: 12px; padding: 10px 12px; margin: 0 0 10px; font-size: 13px; }
 .reco-why ul { margin: 4px 0 4px; padding-left: 18px; color: var(--muted); }
@@ -1229,20 +1230,46 @@ let pickerOpen = false;
 // 며칠 안에 짜 두고 아직 시작 안 한 플랜 (전날 밤에 짠 것 등) → 오늘로 가져올 수 있게
 const pastPlan = () => Object.keys(G().sessions).filter(d => d < todayStr() && d >= addDays(todayStr(), -3) && isPlan(G().sessions[d]) && G().sessions[d].items.length).sort().at(-1);
 // ── 추천 플랜: 최근 7일 기록(헬스 세트·내가 적은 운동·걸음)·생리·인바디로 운동 목록에서 골라 줌 ──
-// 규칙: 많이 쓴 부위는 쉬고, 오래 안 한 부위·큰 근육(등·엉덩이)을 먼저. 생리 중이면 가볍게(4개).
-// 고른 운동은 예전에 해 본 것을 먼저(무게가 채워지게), 없으면 머신 위주 기본 순서.
+// 엄마 몸에 맞춘 규칙 (2026-11-27): 손목이 약함 · 어깨가 자주 아픔(등 운동이 중요) · 근력은 40분 이내 · 필라테스를 자주 함
+//  1. 어깨 회전근 준비운동(익스터널 로테이션)으로 시작, 머리 위로 미는 운동은 안 넣음
+//  2. 등(당기기)을 가슴(밀기)보다 2배: 어깨가 앞으로 말리지 않게. 등 2개는 늘 넣음
+//  3. 손목에 무게가 실리는 운동(덤벨 로우·스쿼트 바·덤벨 데드리프트·손목이 꺾이는 팔 운동)은 안 넣음
+//  4. 큰 근육 먼저, 상체·하체는 묶어서(왔다 갔다 하지 않게), 작은 근육(팔)은 마지막
+//  5. 근력 시간 40분 안: 큰 운동 3세트 ≈ 8분, 작은 운동 2세트 ≈ 5분으로 어림해서 넘치면 뺌
+//  6. 점진적 과부하: 지난번에 모든 세트를 12회 이상 했으면 무게 +2.5kg, 10회부터 다시
+//  7. 많이 쓴 부위는 쉼(러닝·걸음이 많으면 하체는 엉덩이만), 생리 1~3일째는 30분·2세트로 가볍게
 const RECO_PICK = {
-  '등': ['머신 랫풀다운', '케이블 시티드 로우', '랫풀다운', '원암 덤벨 로우', '덤벨 로우', '백 익스텐션'],
-  '하체·엉덩이': ['힙 쓰러스트', '머신 레그 프레스', '시티드 레그 컬', '스미스머신 스쿼트', '덤벨 스티프 레그 데드리프트', '힙 어브덕션', '플레이트 힙 쓰러스트', '힙 어덕션'],
+  '등': ['머신 랫풀다운', '케이블 시티드 로우', '랫풀다운', '백 익스텐션'],
+  '하체·엉덩이': ['힙 쓰러스트', '머신 레그 프레스', '시티드 레그 컬', '힙 어브덕션', '플레이트 힙 쓰러스트', '힙 어덕션'],
   '가슴': ['머신 체스트 프레스'],
-  '어깨': ['덤벨 레터럴 레이즈', '머신 숄더 프레스', '시티드 덤벨 숄더 프레스', '케이블 익스터널 로테이션'],
-  '팔': ['케이블 트라이셉 푸시다운', '덤벨 해머 컬', '케이블 바이셉 컬', '덤벨 트라이셉스 익스텐션', '덤벨 트라이셉 킥백'],
+  '팔': ['케이블 트라이셉 푸시다운', '덤벨 해머 컬'],
 };
-const RECO_BASE = { '등': 3, '하체·엉덩이': 3, '가슴': 2, '어깨': 2, '팔': 1 };
+const WARMUP = '케이블 익스터널 로테이션';
+// 운동 고르기 화면에 보여 줄 주의 (추천에서는 빠짐)
+const CAUTION = {
+  '원암 덤벨 로우': '손목', '덤벨 로우': '손목', '스미스머신 스쿼트': '손목·어깨', '덤벨 스티프 레그 데드리프트': '손목',
+  '머신 숄더 프레스': '어깨', '시티드 덤벨 숄더 프레스': '어깨·손목', '덤벨 레터럴 레이즈': '어깨',
+  '케이블 바이셉 컬': '손목', '덤벨 트라이셉스 익스텐션': '손목·어깨', '덤벨 트라이셉 킥백': '손목',
+};
+const RECO_BASE = { '등': 3, '하체·엉덩이': 3, '가슴': 2, '팔': 1 };
 // 헬스 말고 적은 운동이 어느 부위를 얼마나 썼는지 (대략)
-const MINE_LOAD = { 러닝: { '하체·엉덩이': 4 }, 자전거: { '하체·엉덩이': 3 }, 필라테스: { '하체·엉덩이': 2, '등': 1, '어깨': 1 }, 홈트레이닝: { '하체·엉덩이': 2, '가슴': 1 } };
+const MINE_LOAD = { 러닝: { '하체·엉덩이': 4 }, 자전거: { '하체·엉덩이': 3 }, 필라테스: { '하체·엉덩이': 2, '등': 1 }, 홈트레이닝: { '하체·엉덩이': 2, '가슴': 1 } };
 const CARDIO_NAMES = ['러닝', '자전거'];
 const manNum = n => n >= 10000 ? `${r1(n / 10000)}만` : fmtInt(n);
+
+// 추천 세트: 해 본 운동은 지난번 세트(모두 12회 이상이면 +2.5kg), 처음이면 목표 횟수만
+function recoSets(n, today, count, reps, light) {
+  const last = doneDays(today).map(d => (G().sessions[d].items || []).find(i => i.ex === n)).find(it => it && it.sets.some(x => x.done));
+  let w = '', r = String(reps), up = false;
+  if (last) {
+    const ds = last.sets.filter(x => x.done), top = Math.max(...ds.map(x => +x.w || 0));
+    w = top ? String(top) : '';
+    if (top && ds.length >= 2 && ds.every(x => +x.r >= 12) && !light) { w = String(r1(top + 2.5)); r = '10'; up = true; }
+    else if (ds[0] && ds[0].r) r = ds[0].r;
+  }
+  if (light && w) w = String(r1(+w * 0.8));
+  return { sets: Array.from({ length: count }, () => ({ w, r, done: false })), up, prev: last ? w : '' };
+}
 
 function recommendPlan() {
   const today = todayStr(), days = Array.from({ length: 7 }, (_, i) => addDays(today, -i));
@@ -1268,59 +1295,63 @@ function recommendPlan() {
   const steps = days.map(d => (S.data.days[d] || {}).steps).filter(x => x != null);
   const avgSteps = steps.length ? Math.round(steps.reduce((a, b) => a + b, 0) / steps.length) : 0;
   if (avgSteps >= 12000) add('하체·엉덩이', 3); else if (avgSteps >= 8000) add('하체·엉덩이', 1);
-
-  // 이번 주 요약 한 줄
   const doneList = [...Object.entries(did).map(([n, c]) => `${n} ${c}번`), sets ? `헬스 세트 ${sets}개` : ''].filter(Boolean);
   why.push(`최근 7일: ${doneList.length ? doneList.join(' · ') : '적은 운동 없음'}${avgSteps ? ` · 걸음 평균 ${manNum(avgSteps)} 보` : ''}`);
 
-  // 부위별로 마지막으로 근력 운동한 날 (헬스 기록 전체)
+  // 부위별로 마지막으로 근력 운동한 날 → 오래 안 한 부위 먼저
   const lastDay = {};
-  for (const d of Object.keys(G().sessions).sort()) {
-    const ses = G().sessions[d];
-    if (ses.start) for (const it of ses.items) if (it.sets.some(x => x.done) && !isCardio(it.ex)) lastDay[groupOf(it.ex)] = d;
-  }
+  for (const d of doneDays(addDays(today, 1)).reverse()) for (const it of G().sessions[d].items) if (it.sets.some(x => x.done) && !isCardio(it.ex)) lastDay[groupOf(it.ex)] = d;
   const need = {};
-  for (const g of Object.keys(RECO_PICK)) {
-    const gap = lastDay[g] ? diffDays(lastDay[g], today) : 14;
-    need[g] = RECO_BASE[g] + Math.min(gap, 14) / 7 - (load[g] || 0) * 0.3;
-  }
+  for (const g of Object.keys(RECO_PICK)) need[g] = RECO_BASE[g] + Math.min(lastDay[g] ? diffDays(lastDay[g], today) : 14, 14) / 7 - (load[g] || 0) * 0.3;
   const legBusy = (load['하체·엉덩이'] || 0) >= 5;
-  const never = Object.keys(RECO_PICK).filter(g => g !== '팔' && !lastDay[g]);
 
-  // 생리
-  let N = 6;
+  // 생리 1~3일째는 가볍게
+  let maxMin = 40, light = false;
   try {
     const I = cycleInfo();
-    if (I.L && I.ongoing && I.day <= 3) { N = 4; why.push(`생리 ${I.day}일째예요 → 4개만, 무게는 가볍게`); }
+    if (I.L && I.ongoing && I.day <= 3) { maxMin = 30; light = true; why.push(`생리 ${I.day}일째예요 → 30분 · 2세트 · 무게 80%로 가볍게`); }
     else if (I.L && !I.ongoing && I.day <= 12) why.push('생리가 끝난 뒤라 근력 운동하기 좋은 때예요');
   } catch {}
-  // 인바디
   const ib = ibSorted().filter(e => e.f != null).at(-1);
-  if (ib && ib.f > 28) why.push(`체지방률 ${f1(ib.f)}% → 큰 근육(등·엉덩이) 위주로 근육 늘리기`);
+  if (ib && ib.f > 28) why.push(`체지방률 ${f1(ib.f)}% → 큰 근육(등·엉덩이)으로 근육 늘리기`);
 
-  // 부위 고르기: 큰 근육(등·엉덩이)은 늘 넣고, 나머지는 필요한 순서대로 1개씩, 남는 자리는 등·하체에 하나 더
-  const order = ['등', '하체·엉덩이', ...Object.keys(RECO_PICK).filter(g => g !== '등' && g !== '하체·엉덩이').sort((a, b) => need[b] - need[a])];
-  const slots = {}, used = () => Object.values(slots).reduce((a, b) => a + b, 0);
-  for (const g of order) if (used() < N) slots[g] = 1;
-  for (const g of ['등', '하체·엉덩이']) if (used() < N && !(g === '하체·엉덩이' && legBusy) && need[g] > 3) slots[g]++;
-  if (used() < N && slots['등'] === 1) slots['등']++;
-  if (legBusy) why.push('다리는 이번 주에 많이 썼어요 → 하체는 엉덩이 운동 하나만');
-  const nv = never.filter(g => slots[g]);
-  if (nv.length === 4) why.push('헬스 기록이 아직 없어서 부위별로 골고루 골랐어요. 무게는 마지막 2회가 힘들 정도로');
-  else if (nv.length) why.push(`${nv.join('·')} 운동은 아직 기록이 없어요 → 넣었어요`);
-  // 운동 고르기: 해 본 것 먼저(최근 순), 하체가 바쁘면 엉덩이 운동만
+  // 고르기: 준비운동 → 등 2개 → 엉덩이 1개는 늘 넣고, 남는 시간에 가슴·하체 하나 더·팔을 필요한 순서대로
   const triedAt = {};
-  for (const d of Object.keys(G().sessions).sort()) if (G().sessions[d].start) for (const it of G().sessions[d].items) triedAt[it.ex] = d;
-  const items = [];
-  // 하는 순서: 큰 근육 먼저 → 작은 근육 → 유산소
-  for (const g of ['등', '하체·엉덩이', '가슴', '어깨', '팔']) {
-    let list = RECO_PICK[g];
-    if (g === '하체·엉덩이' && legBusy) list = ['힙 쓰러스트', '플레이트 힙 쓰러스트', '힙 어브덕션'];
-    const ranked = [...list].sort((a, b) => (triedAt[b] || '').localeCompare(triedAt[a] || '') || list.indexOf(a) - list.indexOf(b));
-    for (const n of ranked.slice(0, slots[g] || 0)) items.push(n);
-  }
-  // 유산소가 적은 주면 마지막에 일립티컬
-  if (cardioMin < 45 && avgSteps < 8000) { items.push('일립티컬 머신'); why.push('이번 주 유산소가 적어요 → 마지막에 일립티컬'); }
+  for (const d of doneDays(addDays(today, 1)).reverse()) for (const it of G().sessions[d].items) triedAt[it.ex] = d;
+  const pickFrom = (g, k) => {
+    const list = g === '하체·엉덩이' && legBusy ? ['힙 쓰러스트', '플레이트 힙 쓰러스트', '힙 어브덕션'] : RECO_PICK[g];
+    return [...list].sort((a, b) => (triedAt[b] || '').localeCompare(triedAt[a] || '') || list.indexOf(a) - list.indexOf(b))[k];
+  };
+  const big = light ? 6 : 8, small = light ? 4 : 5; // 운동 하나에 걸리는 분 (세트 + 쉬는 시간 + 자리 옮기기)
+  const chosen = [{ g: '준비', ex: WARMUP, min: 3, sets: 2, reps: 15 }];
+  const take = (g, k, min, sets, reps) => { const ex = pickFrom(g, k); if (ex && !chosen.some(c => c.ex === ex)) chosen.push({ g, ex, min, sets, reps }); };
+  take('등', 0, big, 3, 10); take('등', 1, big, 3, 10); take('하체·엉덩이', 0, big, 3, 10);
+  const extra = [
+    { g: '가슴', k: 0, min: big, sets: 3, reps: 10, score: need['가슴'] },
+    ...(legBusy ? [] : [{ g: '하체·엉덩이', k: 1, min: big, sets: 3, reps: 10, score: need['하체·엉덩이'] - 1 }]),
+    { g: '팔', k: 0, min: small, sets: 2, reps: 12, score: need['팔'] },
+  ].sort((a, b) => b.score - a.score);
+  const total = () => chosen.reduce((a, c) => a + c.min, 0);
+  for (const e of extra) if (total() + e.min <= maxMin) take(e.g, e.k, e.min, e.sets, e.reps);
+
+  // 하는 순서: 준비운동 → (하체가 주인공이면 하체 먼저) → 등 → 가슴 → 팔 → 엉덩이로 마무리
+  const legsMain = chosen.filter(c => c.g === '하체·엉덩이').length >= 2;
+  const rank = { 준비: 0, '하체·엉덩이': legsMain ? 1 : 9, 등: 2, 가슴: 3, 팔: 4 };
+  chosen.sort((a, b) => rank[a.g] - rank[b.g]);
+
+  why.push('어깨·손목 보호: 회전근 준비운동부터, 머리 위로 미는 운동과 손목에 무게 실리는 운동은 뺐어요');
+  why.push('등 운동을 가슴보다 많이 (어깨가 앞으로 말리지 않게)');
+  if (legBusy) why.push('다리는 이번 주에 많이 썼어요 → 하체는 엉덩이 운동 하나만');
+  why.push(`순서: ${chosen.map(c => c.g === '준비' ? '어깨 준비' : c.g === '하체·엉덩이' ? '엉덩이·하체' : c.g).filter((g, i, a) => a.indexOf(g) === i).join(' → ')} · 근력 약 ${total()}분`);
+
+  const items = chosen.map(c => {
+    const r = recoSets(c.ex, today, light ? 2 : c.sets, c.reps, light);
+    if (r.up) why.push(`${c.ex}: 지난번 12회씩 다 해서 ${r.sets[0].w}kg로 올렸어요`);
+    return { ex: c.ex, sets: r.sets };
+  });
+  if (!Object.keys(lastDay).length) why.push('처음 하는 운동은 마지막 2회가 힘들 정도의 무게로 시작해요');
+  // 유산소가 적은 주면 근력 끝나고 일립티컬 10분 (근력 시간에는 안 셈)
+  if (cardioMin < 45 && avgSteps < 8000) { items.push({ ex: '일립티컬 머신', sets: [{ m: '10', done: false }] }); why.push('이번 주 유산소가 적어요 → 끝나고 일립티컬 10분'); }
   return { items, why };
 }
 
@@ -1393,7 +1424,7 @@ function pickerHtml() {
   return `<div class="picker" id="picker">
     <div class="fld" style="margin:10px 0 6px"><input id="pk-q" placeholder="운동 이름 검색" autocomplete="off"></div>
     ${exGroups().map(([g, list]) => `<div class="pk-g" data-g><h4>${g}</h4>
-      ${list.map(n => `<button class="pk ${have.has(n) ? 'have' : ''}" data-pick-ex="${esc(n)}">${figSvg(n, 44)}<span>${esc(n)}</span><b>${have.has(n) ? '추가됨' : '＋'}</b></button>`).join('')}</div>`).join('')}
+      ${list.map(n => `<button class="pk ${have.has(n) ? 'have' : ''}" data-pick-ex="${esc(n)}">${figSvg(n, 44)}<span>${esc(n)}${CAUTION[n] ? `<small class="pk-c">${CAUTION[n]} 주의</small>` : ''}</span><b>${have.has(n) ? '추가됨' : '＋'}</b></button>`).join('')}</div>`).join('')}
     <div class="detail-foot"><button class="link" data-act="ex-custom">목록에 없는 운동 직접 추가</button><button class="btn small ghost" data-act="picker">닫기</button></div>
   </div>`;
 }
@@ -1565,7 +1596,7 @@ function gymClick(t) {
     if (s && s.start) return true;
     if (s && s.items.length && !confirm('지금 플랜을 추천 플랜으로 바꿀까요?')) return true;
     const { items, why } = recommendPlan();
-    G().sessions[today] = { items: items.map(n => ({ ex: n, sets: lastSetsFor(n, today) })), why, routine: '' };
+    G().sessions[today] = { items, why, routine: '' };
     pickerOpen = false; saveSession(today, true); renderGym(); toast('추천 플랜을 넣었어요. 빼거나 더해도 돼요'); return true;
   }
   if (a === 'plan-new') { if (!s) { G().sessions[today] = { items: [] }; saveSession(today, true); } pickerOpen = true; renderGym(); setTimeout(() => scrollToEl($('#picker'), 80), 30); return true; }
@@ -1588,7 +1619,12 @@ function gymClick(t) {
   if (a === 'picker') { pickerOpen = !pickerOpen; renderGym(); if (pickerOpen) setTimeout(() => scrollToEl($('#picker'), 80), 30); return true; }
   if (t.dataset.pickEx) {
     const n = t.dataset.pickEx;
-    if (!s.items.some(i => i.ex === n)) { s.items.push({ ex: n, sets: lastSetsFor(n, today) }); saveSession(today); }
+    if (!s.items.some(i => i.ex === n)) {
+      // 플랜을 짤 때는 같은 부위 운동 바로 뒤에 넣음 (부위가 왔다 갔다 하지 않게). 운동 중에는 맨 뒤
+      const it = { ex: n, sets: lastSetsFor(n, today) }, at = isPlan(s) ? s.items.map(i => groupOf(i.ex)).lastIndexOf(groupOf(n)) : -1;
+      if (at >= 0) s.items.splice(at + 1, 0, it); else s.items.push(it);
+      saveSession(today);
+    }
     toast(`${n} 추가`); pickerOpen = false; renderGym(); return true;
   }
   if (a === 'ex-custom') {
