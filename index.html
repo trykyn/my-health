@@ -543,6 +543,7 @@ function todayHero(ds) {
         <span class="pill ${min >= S.goal ? 'done' : ''}">${status}</span>
         ${planOf(ds).length ? `<div class="plan-line">오늘 계획 ${planOf(ds).map(n => `<span class="${didOn(ds, n) ? 'ok' : ''}">${didOn(ds, n) ? '✓ ' : ''}${esc(n)}</span>`).join('')}</div>` : ''}
         ${cyc ? `<button class="cyc-mini" data-tab="cyc"><i></i>${cyc}</button>` : ''}
+        ${(() => { const g = G().sessions[ds]; return isPlan(g) && g.items.length ? `<button class="cyc-mini" data-tab="gym">📝 헬스 플랜 · 운동 ${g.items.length}개</button>` : ''; })()}
         <div><b class="num">${rec.steps != null ? fmtInt(rec.steps) : '–'}</b><span>걸음</span></div>
         ${(() => { const k = mineOf(ds).reduce((a, x) => a + (x.kcal || 0), 0); return k ? `<div><b class="num">${fmtInt(k)}</b><span>운동 kcal</span></div>` : ''; })()}
       </div>
@@ -1134,6 +1135,7 @@ requestAnimationFrame(figLoop);
 // ── 헬스 ──
 // gym = { plan: { 월요일날짜: { 0~6(월~일): [운동 이름] } }, routines: [{ id, name, ex: [운동] }],
 //         sessions: { 날짜: { start, end?, min?, kcal?, items: [{ ex, sets: [{ w, r, m, done }] }] } }, custom: [{ name }] }
+//         start 가 없으면 '오늘의 헬스 플랜' (헬스장 가기 전에 짜 둔 것). 헬스장에서 '시작'을 누르면 start 가 생김
 const EX_GROUPS = [
   ['등', ['케이블 시티드 로우', '랫풀다운', '머신 랫풀다운', '원암 덤벨 로우', '덤벨 로우', '백 익스텐션']],
   ['가슴', ['머신 체스트 프레스']],
@@ -1171,10 +1173,12 @@ function planCard() {
   const cells = WD.map((w, i) => {
     const d = new Date(gymWeek.getFullYear(), gymWeek.getMonth(), gymWeek.getDate() + i), ds = ymd(d), items = plan[i] || [];
     const ok = items.filter(n => didOn(ds, n)).length;
+    // 계획에 없었어도 그날 한 운동('오늘' 탭에 적은 것)도 보여 줌
+    const extra = [...new Set(mineOf(ds).map(x => x.name))].filter(n => !items.includes(n));
     total += items.length; done += ok;
     return `<button class="pd ${items.length && ok === items.length ? 'done' : ''} ${ds === today ? 'today' : ''} ${planDay === ds ? 'sel' : ''}" data-plan-day="${ds}">
       <span class="pd-w">${w}</span><span class="pd-d num">${d.getDate()}</span>
-      ${items.length ? items.map(n => `<span class="pd-i ${didOn(ds, n) ? 'ok' : ''}">${esc(shortName(n))}</span>`).join('') : '<span class="pd-i none">·</span>'}
+      ${items.map(n => `<span class="pd-i ${didOn(ds, n) ? 'ok' : ''}">${esc(shortName(n))}</span>`).join('')}${extra.map(n => `<span class="pd-i ok">${esc(shortName(n))}</span>`).join('')}${items.length || extra.length ? '' : '<span class="pd-i none">·</span>'}
     </button>`;
   }).join('');
   const end = new Date(gymWeek.getFullYear(), gymWeek.getMonth(), gymWeek.getDate() + 6);
@@ -1198,8 +1202,10 @@ function planCard() {
 }
 
 // 세트 기록
+const isPlan = s => !!s && !s.start;
+const doneDays = before => Object.keys(G().sessions).filter(d => d < before && G().sessions[d].start).sort().reverse();
 function lastSetsFor(name, before) {
-  const days = Object.keys(G().sessions).filter(d => d < before).sort().reverse();
+  const days = doneDays(before);
   for (const d of days) {
     const it = (G().sessions[d].items || []).find(i => i.ex === name);
     if (it && it.sets.length) return it.sets.map(s => ({ w: s.w || '', r: s.r || '', m: s.m || '', done: false }));
@@ -1207,7 +1213,7 @@ function lastSetsFor(name, before) {
   return isCardio(name) ? [{ m: '', done: false }] : [0, 1, 2].map(() => ({ w: '', r: '', done: false }));
 }
 const lastText = (name, before) => {
-  const days = Object.keys(G().sessions).filter(d => d < before).sort().reverse();
+  const days = doneDays(before);
   for (const d of days) {
     const it = (G().sessions[d].items || []).find(i => i.ex === name);
     if (it) { const s = it.sets.filter(x => x.done); if (s.length) return `지난번 ${shortDate(d)} · ` + (isCardio(name) ? `${s[0].m}분` : s.map(x => `${x.w}×${x.r}`).join(', ')); }
@@ -1216,14 +1222,23 @@ const lastText = (name, before) => {
 };
 let pickerOpen = false;
 
+// 며칠 안에 짜 두고 아직 시작 안 한 플랜 (전날 밤에 짠 것 등) → 오늘로 가져올 수 있게
+const pastPlan = () => Object.keys(G().sessions).filter(d => d < todayStr() && d >= addDays(todayStr(), -3) && isPlan(G().sessions[d]) && G().sessions[d].items.length).sort().at(-1);
 function sessionCard() {
-  const ds = todayStr(), s = G().sessions[ds];
-  if (!s) return `<div class="card">
+  const ds = todayStr(), s = G().sessions[ds], pp = !s && pastPlan();
+  if (!s) {
+    const P = pp && G().sessions[pp];
+    return `<div class="card">
     <h2>오늘 헬스</h2>
+    ${P ? `<button class="ib-mini" style="margin:0 0 12px" data-act="plan-bring" data-date="${pp}"><span class="sub">${longDate(pp)}에 짠 플랜</span><b style="font-size:15px">📝 ${P.items.slice(0, 3).map(i => esc(i.ex)).join(', ')}${P.items.length > 3 ? ` 외 ${P.items.length - 3}개` : ''} · 오늘로 가져오기</b></button>` : ''}
     ${G().routines.length ? `<p class="sub" style="margin:0 0 8px;font-size:13px">루틴을 고르면 운동이 한 번에 들어가요</p>
       <div class="chips">${G().routines.map(r => `<button class="chip pick" data-start="${esc(r.id)}">${esc(r.name)} · ${r.ex.length}개</button>`).join('')}</div>` : ''}
-    <button class="btn" style="width:100%;margin-top:12px" data-start="">${G().routines.length ? '빈 운동으로 시작' : '헬스 시작'}</button>
+    <div class="gym-end" style="margin-top:12px">
+      <button class="btn ghost" data-act="plan-new">📝 오늘 플랜 짜기</button>
+      <button class="btn" data-start="">${G().routines.length ? '빈 운동으로 시작' : '헬스 시작'}</button></div>
+    <p class="sub" style="margin:10px 0 0;font-size:13px">가기 전에 플랜을 짜 두면 헬스장에서 '시작'만 누르면 돼요.</p>
   </div>`;
+  }
   if (s.end) {
     const sets = s.items.reduce((a, i) => a + i.sets.filter(x => x.done).length, 0);
     return `<div class="card">
@@ -1232,6 +1247,7 @@ function sessionCard() {
       <ul class="wo">${s.items.map(i => `<li>${figSvg(i.ex, 40)}<span class="wo-name">${esc(i.ex)}<span class="wo-note">${isCardio(i.ex) ? i.sets.filter(x => x.done).map(x => `${x.m}분`).join(', ') : i.sets.filter(x => x.done).map(x => `${x.w}kg×${x.r}`).join(', ')}</span></span></li>`).join('')}</ul>
     </div>`;
   }
+  const plan = isPlan(s);
   const items = s.items.map((it, i) => {
     const cardio = isCardio(it.ex), hint = lastText(it.ex, ds);
     return `<div class="gx">
@@ -1239,14 +1255,25 @@ function sessionCard() {
         <div class="gx-name"><b>${esc(it.ex)}</b><span class="gx-grp">${groupOf(it.ex)}</span>
           ${hint ? `<span class="gx-last">${esc(hint)}</span>` : ''}
           <a class="gx-yt" href="${ytUrl(it.ex)}" target="_blank" rel="noopener">자세 영상 ↗</a></div>
-        <button class="x" data-gx-del="${i}" aria-label="${esc(it.ex)} 빼기">${X_ICON}</button></div>
+        ${plan && i ? `<button class="x up" data-gx-up="${i}" aria-label="${esc(it.ex)} 앞으로">↑</button>` : ''}<button class="x" data-gx-del="${i}" aria-label="${esc(it.ex)} 빼기">${X_ICON}</button></div>
       ${it.sets.map((st, j) => `<div class="gs ${st.done ? 'done' : ''}"><span class="gs-n num">${j + 1}</span>
         ${cardio ? `<input class="num" data-gs="${i}:${j}:m" value="${esc(st.m)}" inputmode="numeric" placeholder="0"><span class="gs-u">분</span>`
           : `<input class="num" data-gs="${i}:${j}:w" value="${esc(st.w)}" inputmode="decimal" placeholder="0"><span class="gs-u">kg ×</span><input class="num" data-gs="${i}:${j}:r" value="${esc(st.r)}" inputmode="numeric" placeholder="0"><span class="gs-u">회</span>`}
-        <button class="gs-ok" data-gs-ok="${i}:${j}" aria-label="${j + 1}세트 완료">✓</button></div>`).join('')}
+        ${plan ? '' : `<button class="gs-ok" data-gs-ok="${i}:${j}" aria-label="${j + 1}세트 완료">✓</button>`}</div>`).join('')}
       <div class="gx-foot"><button class="link" data-gs-add="${i}">＋ 세트</button>${it.sets.length > 1 ? `<button class="link" data-gs-rm="${i}">− 세트</button>` : ''}</div>
     </div>`;
   }).join('');
+  if (plan) return `<div class="card">
+    <div class="wo-head"><h3>📝 오늘의 헬스 플랜</h3><button class="link" data-act="gym-cancel">플랜 지우기</button></div>
+    <p class="sub" style="margin:2px 0 10px;font-size:13px">무게·횟수는 목표로 적어 두세요. 저절로 저장돼요.</p>
+    ${!s.items.length && G().routines.length ? `<div class="chips" style="margin-bottom:6px">${G().routines.map(r => `<button class="chip pick" data-plan-routine="${esc(r.id)}">${esc(r.name)} 루틴 넣기</button>`).join('')}</div>` : ''}
+    ${items || '<p class="sub wo-empty">아래에서 오늘 할 운동을 골라요.</p>'}
+    <button class="btn ghost" style="width:100%;margin-top:10px" data-act="picker">＋ 운동 추가</button>
+    ${pickerOpen ? pickerHtml() : ''}
+    ${s.items.length ? `<div class="gym-end">
+      <button class="btn ghost small" data-act="routine-save">루틴으로 저장</button>
+      <button class="btn" data-act="gym-go">헬스장 도착! 시작</button></div>` : ''}
+  </div>`;
   return `<div class="card">
     <div class="wo-head"><h3>오늘 헬스 <span class="sub num" id="gym-elapsed" style="font-weight:500"></span><span class="sub" id="wake" hidden style="font-weight:500;font-size:12px"> · 화면 켜 둠</span></h3><button class="link" data-act="gym-cancel">기록 지우기</button></div>
     ${items || '<p class="sub wo-empty">아래에서 운동을 추가해요.</p>'}
@@ -1303,7 +1330,7 @@ function exChartHtml(n) {
 function statsCard() {
   const now = new Date(), y = now.getFullYear(), m = now.getMonth();
   const inMonth = ds => { const d = parseYmd(ds); return d.getFullYear() === y && d.getMonth() === m; };
-  const days = new Set([...Object.keys(S.data.mine || {}).filter(inMonth).filter(d => mineOf(d).length), ...Object.keys(G().sessions).filter(inMonth)]);
+  const days = new Set([...Object.keys(S.data.mine || {}).filter(inMonth).filter(d => mineOf(d).length), ...Object.keys(G().sessions).filter(inMonth).filter(d => G().sessions[d].start)]);
   const count = {};
   for (const d of Object.keys(S.data.mine || {}).filter(inMonth)) for (const x of mineOf(d)) count[x.name] = (count[x.name] || 0) + 1;
   const top = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
@@ -1349,7 +1376,7 @@ const saveMeta = wk => post(wk ? { planWeeks: { [wk]: G().plan[wk] || null } } :
 let wakeLock = null;
 async function updateWakeLock() {
   const s = G().sessions[todayStr()];
-  const want = S.tab === 'gym' && !document.hidden && !!s && !s.end;
+  const want = S.tab === 'gym' && !document.hidden && !!s && !!s.start && !s.end;
   try {
     if (want && !wakeLock && 'wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => (wakeLock = null)); }
     if (!want && wakeLock) { const w = wakeLock; wakeLock = null; await w.release(); }
@@ -1387,7 +1414,7 @@ function tickRest() {
     bar.querySelector('s').style.width = Math.min(100, left / 600) + '%';
   }
   const el = !document.hidden && $('#gym-elapsed'), ses = el && G().sessions[todayStr()];
-  if (ses && !ses.end) el.textContent = `· ${Math.max(1, Math.round((Date.now() - ses.start) / 60000))}분째`;
+  if (ses && ses.start && !ses.end) el.textContent = `· ${Math.max(1, Math.round((Date.now() - ses.start) / 60000))}분째`;
 }
 setInterval(tickRest, 250);
 
@@ -1431,9 +1458,23 @@ function gymClick(t) {
     G().sessions[today] = { start: Date.now(), routine: r ? r.name : '', items: r ? r.ex.map(n => ({ ex: n, sets: lastSetsFor(n, today) })) : [] };
     pickerOpen = !r; saveSession(today, true); renderGym(); return true;
   }
+  if (a === 'plan-new') { if (!s) { G().sessions[today] = { items: [] }; saveSession(today, true); } pickerOpen = true; renderGym(); setTimeout(() => scrollToEl($('#picker'), 80), 30); return true; }
+  if (a === 'plan-bring') {
+    const d = t.dataset.date, p = G().sessions[d];
+    if (!p || s) return true;
+    G().sessions[today] = p; delete G().sessions[d];
+    queue({ gymSessions: { [d]: null } }); saveSession(today, true); renderGym(); toast('플랜을 오늘로 가져왔어요'); return true;
+  }
   if (a === 'gym-finish') return finishSession(t.dataset.date || today);
   if (a === 'gym-cancel') return cancelSession(t.dataset.date || today);
   if (!s) return false;
+  if (a === 'gym-go') { s.start = Date.now(); pickerOpen = false; saveSession(today, true); renderGym(); toast('시작! 화이팅 💪'); return true; }
+  if (t.dataset.planRoutine) {
+    const r = G().routines.find(x => x.id === t.dataset.planRoutine);
+    if (r) { for (const n of r.ex) if (!s.items.some(i => i.ex === n)) s.items.push({ ex: n, sets: lastSetsFor(n, today) }); s.routine = r.name; saveSession(today); renderGym(); }
+    return true;
+  }
+  if (t.dataset.gxUp !== undefined) { const i = +t.dataset.gxUp; if (i > 0 && s.items[i]) { [s.items[i - 1], s.items[i]] = [s.items[i], s.items[i - 1]]; saveSession(today); renderGym(); } return true; }
   if (a === 'picker') { pickerOpen = !pickerOpen; renderGym(); if (pickerOpen) setTimeout(() => scrollToEl($('#picker'), 80), 30); return true; }
   if (t.dataset.pickEx) {
     const n = t.dataset.pickEx;
@@ -1494,7 +1535,7 @@ function finishSession(ds) {
 }
 function cancelSession(ds) {
   if (!G().sessions[ds]) return true;
-  if (!confirm(`${ds === todayStr() ? '오늘' : shortDate(ds)} 헬스 기록을 지울까요?`)) return true;
+  if (!confirm(isPlan(G().sessions[ds]) ? '짜 둔 플랜을 지울까요?' : `${ds === todayStr() ? '오늘' : shortDate(ds)} 헬스 기록을 지울까요?`)) return true;
   delete G().sessions[ds];
   if (ds === todayStr()) { restEnd = 0; pickerOpen = false; }
   const list = mineOf(ds).filter(x => !x.gym);
@@ -1502,7 +1543,7 @@ function cancelSession(ds) {
   queue({ mineDays: { [ds]: list } });
   saveSession(ds, true); renderGym(); return true;
 }
-const unfinishedGym = () => Object.keys(G().sessions).filter(d => d < todayStr() && !G().sessions[d].end).sort();
+const unfinishedGym = () => Object.keys(G().sessions).filter(d => d < todayStr() && G().sessions[d].start && !G().sessions[d].end).sort();
 function unfinishedCard() {
   return unfinishedGym().map(d => {
     const s = G().sessions[d], sets = s.items.reduce((n, i) => n + i.sets.filter(x => x.done).length, 0);
