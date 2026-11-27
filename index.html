@@ -1156,7 +1156,17 @@ const FIG_DEFAULT = {
   props: FLOOR,
 };
 
-const lerpPose = (A, B, e) => { const o = {}; for (const k of Object.keys(A)) o[k] = typeof A[k] === 'number' && typeof B[k] === 'number' ? A[k] + (B[k] - A[k]) * e : A[k]; return o; };
+// 각도는 가까운 쪽으로 돌림 (예: 178° ↔ −145° 를 한 바퀴 거꾸로 돌지 않게. 힙 쓰러스트 몸통이 바닥 밑으로 돌던 문제)
+const lerpPose = (A, B, e) => {
+  const o = {};
+  for (const k of Object.keys(A)) {
+    if (typeof A[k] !== 'number' || typeof B[k] !== 'number') { o[k] = A[k]; continue; }
+    let d = B[k] - A[k];
+    if (k !== 'hx' && k !== 'hy' && Math.abs(d) > 180) d -= Math.sign(d) * 360;
+    o[k] = A[k] + d * e;
+  }
+  return o;
+};
 const pl = pts => 'M' + pts.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join('L');
 
 // 그림 그리기: 뼈대(관절 위치)는 그대로, 그 위에 두께 있는 팔다리·몸통·머리를 겹쳐 그림
