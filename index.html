@@ -239,6 +239,10 @@ ol.steps b { font-weight: 600; }
 .gs.done .gs-n { background: var(--accent); color: var(--accent-ink); }
 .gs.done input { background: var(--soft); border-color: transparent; }
 .gx-foot { display: flex; gap: 14px; padding-left: 28px; }
+.reco-btn { width: 100%; background: color-mix(in srgb, var(--c-f) 18%, var(--card)); color: var(--ink); }
+.reco-why { background: var(--field); border-radius: 12px; padding: 10px 12px; margin: 0 0 10px; font-size: 13px; }
+.reco-why ul { margin: 4px 0 4px; padding-left: 18px; color: var(--muted); }
+.reco-why li { margin: 2px 0; }
 .gym-end { display: flex; gap: 8px; margin-top: 12px; }
 .gym-end .btn:last-child { flex: 1; }
 .picker { margin-top: 8px; border-top: 1px solid var(--line); }
@@ -1224,6 +1228,102 @@ let pickerOpen = false;
 
 // 며칠 안에 짜 두고 아직 시작 안 한 플랜 (전날 밤에 짠 것 등) → 오늘로 가져올 수 있게
 const pastPlan = () => Object.keys(G().sessions).filter(d => d < todayStr() && d >= addDays(todayStr(), -3) && isPlan(G().sessions[d]) && G().sessions[d].items.length).sort().at(-1);
+// ── 추천 플랜: 최근 7일 기록(헬스 세트·내가 적은 운동·걸음)·생리·인바디로 운동 목록에서 골라 줌 ──
+// 규칙: 많이 쓴 부위는 쉬고, 오래 안 한 부위·큰 근육(등·엉덩이)을 먼저. 생리 중이면 가볍게(4개).
+// 고른 운동은 예전에 해 본 것을 먼저(무게가 채워지게), 없으면 머신 위주 기본 순서.
+const RECO_PICK = {
+  '등': ['머신 랫풀다운', '케이블 시티드 로우', '랫풀다운', '원암 덤벨 로우', '덤벨 로우', '백 익스텐션'],
+  '하체·엉덩이': ['힙 쓰러스트', '머신 레그 프레스', '시티드 레그 컬', '스미스머신 스쿼트', '덤벨 스티프 레그 데드리프트', '힙 어브덕션', '플레이트 힙 쓰러스트', '힙 어덕션'],
+  '가슴': ['머신 체스트 프레스'],
+  '어깨': ['덤벨 레터럴 레이즈', '머신 숄더 프레스', '시티드 덤벨 숄더 프레스', '케이블 익스터널 로테이션'],
+  '팔': ['케이블 트라이셉 푸시다운', '덤벨 해머 컬', '케이블 바이셉 컬', '덤벨 트라이셉스 익스텐션', '덤벨 트라이셉 킥백'],
+};
+const RECO_BASE = { '등': 3, '하체·엉덩이': 3, '가슴': 2, '어깨': 2, '팔': 1 };
+// 헬스 말고 적은 운동이 어느 부위를 얼마나 썼는지 (대략)
+const MINE_LOAD = { 러닝: { '하체·엉덩이': 4 }, 자전거: { '하체·엉덩이': 3 }, 필라테스: { '하체·엉덩이': 2, '등': 1, '어깨': 1 }, 홈트레이닝: { '하체·엉덩이': 2, '가슴': 1 } };
+const CARDIO_NAMES = ['러닝', '자전거'];
+const manNum = n => n >= 10000 ? `${r1(n / 10000)}만` : fmtInt(n);
+
+function recommendPlan() {
+  const today = todayStr(), days = Array.from({ length: 7 }, (_, i) => addDays(today, -i));
+  const load = {}, add = (g, v) => (load[g] = (load[g] || 0) + v), why = [];
+  let cardioMin = 0, sets = 0;
+  const did = {};
+  for (const d of days) {
+    const ses = G().sessions[d];
+    if (ses && ses.start) for (const it of ses.items) {
+      const n = it.sets.filter(x => x.done).length;
+      if (!n) continue;
+      sets += n;
+      if (isCardio(it.ex)) cardioMin += it.sets.filter(x => x.done).reduce((a, x) => a + (+x.m || 0), 0);
+      else add(groupOf(it.ex), n);
+    }
+    for (const x of mineOf(d)) {
+      if (x.gym) continue;
+      did[x.name] = (did[x.name] || 0) + 1;
+      for (const [g, v] of Object.entries(MINE_LOAD[x.name] || {})) add(g, v);
+      if (CARDIO_NAMES.includes(x.name)) cardioMin += x.min || 0;
+    }
+  }
+  const steps = days.map(d => (S.data.days[d] || {}).steps).filter(x => x != null);
+  const avgSteps = steps.length ? Math.round(steps.reduce((a, b) => a + b, 0) / steps.length) : 0;
+  if (avgSteps >= 12000) add('하체·엉덩이', 3); else if (avgSteps >= 8000) add('하체·엉덩이', 1);
+
+  // 이번 주 요약 한 줄
+  const doneList = [...Object.entries(did).map(([n, c]) => `${n} ${c}번`), sets ? `헬스 세트 ${sets}개` : ''].filter(Boolean);
+  why.push(`최근 7일: ${doneList.length ? doneList.join(' · ') : '적은 운동 없음'}${avgSteps ? ` · 걸음 평균 ${manNum(avgSteps)} 보` : ''}`);
+
+  // 부위별로 마지막으로 근력 운동한 날 (헬스 기록 전체)
+  const lastDay = {};
+  for (const d of Object.keys(G().sessions).sort()) {
+    const ses = G().sessions[d];
+    if (ses.start) for (const it of ses.items) if (it.sets.some(x => x.done) && !isCardio(it.ex)) lastDay[groupOf(it.ex)] = d;
+  }
+  const need = {};
+  for (const g of Object.keys(RECO_PICK)) {
+    const gap = lastDay[g] ? diffDays(lastDay[g], today) : 14;
+    need[g] = RECO_BASE[g] + Math.min(gap, 14) / 7 - (load[g] || 0) * 0.3;
+  }
+  const legBusy = (load['하체·엉덩이'] || 0) >= 5;
+  const never = Object.keys(RECO_PICK).filter(g => g !== '팔' && !lastDay[g]);
+
+  // 생리
+  let N = 6;
+  try {
+    const I = cycleInfo();
+    if (I.L && I.ongoing && I.day <= 3) { N = 4; why.push(`생리 ${I.day}일째예요 → 4개만, 무게는 가볍게`); }
+    else if (I.L && !I.ongoing && I.day <= 12) why.push('생리가 끝난 뒤라 근력 운동하기 좋은 때예요');
+  } catch {}
+  // 인바디
+  const ib = ibSorted().filter(e => e.f != null).at(-1);
+  if (ib && ib.f > 28) why.push(`체지방률 ${f1(ib.f)}% → 큰 근육(등·엉덩이) 위주로 근육 늘리기`);
+
+  // 부위 고르기: 큰 근육(등·엉덩이)은 늘 넣고, 나머지는 필요한 순서대로 1개씩, 남는 자리는 등·하체에 하나 더
+  const order = ['등', '하체·엉덩이', ...Object.keys(RECO_PICK).filter(g => g !== '등' && g !== '하체·엉덩이').sort((a, b) => need[b] - need[a])];
+  const slots = {}, used = () => Object.values(slots).reduce((a, b) => a + b, 0);
+  for (const g of order) if (used() < N) slots[g] = 1;
+  for (const g of ['등', '하체·엉덩이']) if (used() < N && !(g === '하체·엉덩이' && legBusy) && need[g] > 3) slots[g]++;
+  if (used() < N && slots['등'] === 1) slots['등']++;
+  if (legBusy) why.push('다리는 이번 주에 많이 썼어요 → 하체는 엉덩이 운동 하나만');
+  const nv = never.filter(g => slots[g]);
+  if (nv.length === 4) why.push('헬스 기록이 아직 없어서 부위별로 골고루 골랐어요. 무게는 마지막 2회가 힘들 정도로');
+  else if (nv.length) why.push(`${nv.join('·')} 운동은 아직 기록이 없어요 → 넣었어요`);
+  // 운동 고르기: 해 본 것 먼저(최근 순), 하체가 바쁘면 엉덩이 운동만
+  const triedAt = {};
+  for (const d of Object.keys(G().sessions).sort()) if (G().sessions[d].start) for (const it of G().sessions[d].items) triedAt[it.ex] = d;
+  const items = [];
+  // 하는 순서: 큰 근육 먼저 → 작은 근육 → 유산소
+  for (const g of ['등', '하체·엉덩이', '가슴', '어깨', '팔']) {
+    let list = RECO_PICK[g];
+    if (g === '하체·엉덩이' && legBusy) list = ['힙 쓰러스트', '플레이트 힙 쓰러스트', '힙 어브덕션'];
+    const ranked = [...list].sort((a, b) => (triedAt[b] || '').localeCompare(triedAt[a] || '') || list.indexOf(a) - list.indexOf(b));
+    for (const n of ranked.slice(0, slots[g] || 0)) items.push(n);
+  }
+  // 유산소가 적은 주면 마지막에 일립티컬
+  if (cardioMin < 45 && avgSteps < 8000) { items.push('일립티컬 머신'); why.push('이번 주 유산소가 적어요 → 마지막에 일립티컬'); }
+  return { items, why };
+}
+
 function sessionCard() {
   const ds = todayStr(), s = G().sessions[ds], pp = !s && pastPlan();
   if (!s) {
@@ -1233,7 +1333,8 @@ function sessionCard() {
     ${P ? `<button class="ib-mini" style="margin:0 0 12px" data-act="plan-bring" data-date="${pp}"><span class="sub">${longDate(pp)}에 짠 플랜</span><b style="font-size:15px">📝 ${P.items.slice(0, 3).map(i => esc(i.ex)).join(', ')}${P.items.length > 3 ? ` 외 ${P.items.length - 3}개` : ''} · 오늘로 가져오기</b></button>` : ''}
     ${G().routines.length ? `<p class="sub" style="margin:0 0 8px;font-size:13px">루틴을 고르면 운동이 한 번에 들어가요</p>
       <div class="chips">${G().routines.map(r => `<button class="chip pick" data-start="${esc(r.id)}">${esc(r.name)} · ${r.ex.length}개</button>`).join('')}</div>` : ''}
-    <div class="gym-end" style="margin-top:12px">
+    <button class="btn reco-btn" data-act="plan-reco">✨ 이번 주 기록으로 추천 플랜 받기</button>
+    <div class="gym-end" style="margin-top:8px">
       <button class="btn ghost" data-act="plan-new">📝 오늘 플랜 짜기</button>
       <button class="btn" data-start="">${G().routines.length ? '빈 운동으로 시작' : '헬스 시작'}</button></div>
     <p class="sub" style="margin:10px 0 0;font-size:13px">가기 전에 플랜을 짜 두면 헬스장에서 '시작'만 누르면 돼요.</p>
@@ -1266,6 +1367,8 @@ function sessionCard() {
   if (plan) return `<div class="card">
     <div class="wo-head"><h3>📝 오늘의 헬스 플랜</h3><button class="link" data-act="gym-cancel">플랜 지우기</button></div>
     <p class="sub" style="margin:2px 0 10px;font-size:13px">무게·횟수는 목표로 적어 두세요. 저절로 저장돼요.</p>
+    ${s.why ? `<div class="reco-why"><b>✨ 추천 이유</b><ul>${s.why.map(w => `<li>${esc(w)}</li>`).join('')}</ul><button class="link" data-act="plan-reco">다시 추천</button></div>`
+      : !s.items.length ? '<button class="btn reco-btn" data-act="plan-reco">✨ 이번 주 기록으로 추천 받기</button>' : ''}
     ${!s.items.length && G().routines.length ? `<div class="chips" style="margin-bottom:6px">${G().routines.map(r => `<button class="chip pick" data-plan-routine="${esc(r.id)}">${esc(r.name)} 루틴 넣기</button>`).join('')}</div>` : ''}
     ${items || '<p class="sub wo-empty">아래에서 오늘 할 운동을 골라요.</p>'}
     <button class="btn ghost" style="width:100%;margin-top:10px" data-act="picker">＋ 운동 추가</button>
@@ -1458,6 +1561,13 @@ function gymClick(t) {
     G().sessions[today] = { start: Date.now(), routine: r ? r.name : '', items: r ? r.ex.map(n => ({ ex: n, sets: lastSetsFor(n, today) })) : [] };
     pickerOpen = !r; saveSession(today, true); renderGym(); return true;
   }
+  if (a === 'plan-reco') {
+    if (s && s.start) return true;
+    if (s && s.items.length && !confirm('지금 플랜을 추천 플랜으로 바꿀까요?')) return true;
+    const { items, why } = recommendPlan();
+    G().sessions[today] = { items: items.map(n => ({ ex: n, sets: lastSetsFor(n, today) })), why, routine: '' };
+    pickerOpen = false; saveSession(today, true); renderGym(); toast('추천 플랜을 넣었어요. 빼거나 더해도 돼요'); return true;
+  }
   if (a === 'plan-new') { if (!s) { G().sessions[today] = { items: [] }; saveSession(today, true); } pickerOpen = true; renderGym(); setTimeout(() => scrollToEl($('#picker'), 80), 30); return true; }
   if (a === 'plan-bring') {
     const d = t.dataset.date, p = G().sessions[d];
@@ -1468,7 +1578,7 @@ function gymClick(t) {
   if (a === 'gym-finish') return finishSession(t.dataset.date || today);
   if (a === 'gym-cancel') return cancelSession(t.dataset.date || today);
   if (!s) return false;
-  if (a === 'gym-go') { s.start = Date.now(); pickerOpen = false; saveSession(today, true); renderGym(); toast('시작! 화이팅 💪'); return true; }
+  if (a === 'gym-go') { s.start = Date.now(); delete s.why; pickerOpen = false; saveSession(today, true); renderGym(); toast('시작! 화이팅 💪'); return true; }
   if (t.dataset.planRoutine) {
     const r = G().routines.find(x => x.id === t.dataset.planRoutine);
     if (r) { for (const n of r.ex) if (!s.items.some(i => i.ex === n)) s.items.push({ ex: n, sets: lastSetsFor(n, today) }); s.routine = r.name; saveSession(today); renderGym(); }
