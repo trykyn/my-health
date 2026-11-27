@@ -1422,6 +1422,7 @@ function sessionCard() {
   </div>`;
   return `<div class="card">
     <div class="wo-head"><h3>오늘 헬스 <span class="sub num" id="gym-elapsed" style="font-weight:500"></span><span class="sub" id="wake" hidden style="font-weight:500;font-size:12px"> · 화면 켜 둠</span></h3><button class="link" data-act="gym-cancel">기록 지우기</button></div>
+    ${pushOk() && !(Notification.permission === 'granted' && S.pushEp) ? `<button class="link" style="margin:0 0 6px" data-act="rest-push">🔔 화면이 꺼져도 휴식 끝 알림 받기</button>` : ''}
     ${items || '<p class="sub wo-empty">아래에서 운동을 추가해요.</p>'}
     <button class="btn ghost" style="width:100%;margin-top:10px" data-act="picker">＋ 운동 추가</button>
     ${pickerOpen ? pickerHtml() : ''}
@@ -1540,19 +1541,24 @@ function startRest(sec = 60) {
 function beep() {
   // 무음 모드에선 아이폰이 웹 소리를 막음 → 화면을 깜빡여서도 알림
   document.body.classList.remove('flash'); void document.body.offsetWidth; document.body.classList.add('flash');
+  // 음악을 듣고 있어도 잘 들리게: 높고 날카로운 소리(네모파)를 크게, "삐삐삐-" 두 번.
+  // (아이폰은 웹 소리가 음악과 같은 볼륨으로 섞여 나옴. 음악을 잠깐 줄이는 기능은 웹앱엔 없음)
   try {
     if (audioCtx.state !== 'running') audioCtx.resume();
-    for (const o of [0, 0.25, 0.5]) {
-      const os = audioCtx.createOscillator(), g = audioCtx.createGain();
-      os.frequency.value = 880; g.gain.value = 0.18; os.connect(g); g.connect(audioCtx.destination);
-      os.start(audioCtx.currentTime + o); os.stop(audioCtx.currentTime + o + 0.15);
-    }
+    const t0 = audioCtx.currentTime + 0.03;
+    [0, 0.17, 0.34, 0.85, 1.02, 1.19].forEach((o, i) => {
+      const os = audioCtx.createOscillator(), g = audioCtx.createGain(), at = t0 + o;
+      os.type = 'square'; os.frequency.value = i % 3 === 2 ? 2093 : 1568; // 솔·도 (높은 음)
+      g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.6, at + 0.008);
+      g.gain.setValueAtTime(0.6, at + (i % 3 === 2 ? 0.26 : 0.11)); g.gain.linearRampToValueAtTime(0, at + (i % 3 === 2 ? 0.28 : 0.13));
+      os.connect(g); g.connect(audioCtx.destination); os.start(at); os.stop(at + 0.3);
+    });
   } catch {}
   try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch {}
 }
 function tickRest() {
   const bar = $('#rest');
-  if (restEnd && Date.now() >= restEnd) { restEnd = 0; beep(); toast('휴식 끝! 다음 세트 💪'); }
+  if (restEnd && Date.now() >= restEnd) { const late = Date.now() - restEnd; restEnd = 0; if (late < 3000) beep(); toast('휴식 끝! 다음 세트 💪'); }
   bar.hidden = !restEnd;
   if (restEnd) {
     const left = Math.max(0, restEnd - Date.now()), s = Math.ceil(left / 1000);
@@ -1563,6 +1569,38 @@ function tickRest() {
   if (ses && ses.start && !ses.end) el.textContent = `· ${Math.max(1, Math.round((Date.now() - ses.start) / 60000))}분째`;
 }
 setInterval(tickRest, 250);
+
+// ── 휴식 끝 알림 (화면이 꺼졌거나 다른 앱에 있을 때) ──
+// 앱이 화면에서 사라질 때(잠금·다른 앱) 서버에 휴식 끝 시각을 맡기면, 그 시각에 서버가 푸시를 보냄 → 아이폰 알림 + 알림 소리.
+// 다시 화면에 보이면 취소 (앱 안에서는 삐 소리). 아이폰은 홈 화면에 추가한 앱 + iOS 16.4 이상에서만 됨
+const VAPID_PUBLIC = 'BMFdtzLC25AvY2RPTToktD-MEisOnf0ffWZWew-jedQyeICtqAZWRWeBETLkuhW_83rdMrGrs_nZMZLV1GQn0hM';
+const pushOk = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const b64ToBytes = b => { b = b.replace(/-/g, '+').replace(/_/g, '/'); return Uint8Array.from(atob(b + '='.repeat((4 - b.length % 4) % 4)), c => c.charCodeAt(0)); };
+// ask: 아이폰은 버튼을 누른 순간에만 허락을 물어볼 수 있음
+async function restPushOn(ask) {
+  if (!pushOk()) return false;
+  try {
+    let perm = Notification.permission;
+    if (perm === 'default' && ask) perm = await Notification.requestPermission();
+    if (perm !== 'granted') return false;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+    if (S.pushEp !== sub.endpoint) { S.pushEp = sub.endpoint; save(); }
+    return true;
+  } catch { return false; }
+}
+let restRemote = 0; // 서버에 맡겨 둔 휴식 끝 시각 (0 = 없음)
+function restRemoteSet(at) {
+  if (!S.pushEp || at === restRemote) return;
+  restRemote = at;
+  // keepalive: 화면이 꺼지는 순간에도 요청이 나가게. text/plain: 미리 묻는 요청(CORS) 없이 한 번에
+  fetch(`${API}/rest/${S.key}`, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(at ? { endpoint: S.pushEp, at } : { cancel: true }) }).catch(() => {});
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (restEnd > Date.now() + 1500) restRemoteSet(restEnd); }
+  else if (restRemote) restRemoteSet(0);
+});
+if (pushOk() && Notification.permission === 'granted') restPushOn(false); // 주소가 바뀌었을 수 있어서 열 때마다 확인
 
 function gymInput(e) {
   const k = e.target.dataset && e.target.dataset.gs;
@@ -1600,6 +1638,7 @@ function gymClick(t) {
     save(); renderGym(); saveMeta(ymd(gymWeek)); toast('지난주 계획을 가져왔어요'); return true;
   }
   if (t.dataset.start !== undefined) {
+    restPushOn(true);
     const r = G().routines.find(x => x.id === t.dataset.start);
     G().sessions[today] = { start: Date.now(), routine: r ? r.name : '', items: r ? r.ex.filter((n, i) => !CAUTION[n] || r.ex.findIndex(x => CAUTION[x]) === i).map(n => ({ ex: n, sets: lastSetsFor(n, today) })) : [] }; // 손목 주의는 첫 번째 하나만
     pickerOpen = !r; saveSession(today, true); renderGym(); return true;
@@ -1621,7 +1660,7 @@ function gymClick(t) {
   if (a === 'gym-finish') return finishSession(t.dataset.date || today);
   if (a === 'gym-cancel') return cancelSession(t.dataset.date || today);
   if (!s) return false;
-  if (a === 'gym-go') { s.start = Date.now(); delete s.why; pickerOpen = false; saveSession(today, true); renderGym(); toast('시작! 화이팅 💪'); return true; }
+  if (a === 'gym-go') { restPushOn(true); s.start = Date.now(); delete s.why; pickerOpen = false; saveSession(today, true); renderGym(); toast('시작! 화이팅 💪'); return true; }
   if (t.dataset.planRoutine) {
     const r = G().routines.find(x => x.id === t.dataset.planRoutine);
     if (r) {
@@ -1637,6 +1676,11 @@ function gymClick(t) {
     return true;
   }
   if (t.dataset.gxUp !== undefined) { const i = +t.dataset.gxUp; if (i > 0 && s.items[i]) { [s.items[i - 1], s.items[i]] = [s.items[i], s.items[i - 1]]; saveSession(today); renderGym(); } return true; }
+  if (a === 'rest-push') {
+    if (Notification.permission === 'denied') { toast('아이폰 설정 → 알림 → 내 건강에서 켜 주세요'); return true; }
+    restPushOn(true).then(ok => { toast(ok ? '이제 화면이 꺼져도 휴식 끝을 알려 줘요' : '알림을 켜지 못했어요'); renderGym(); });
+    return true;
+  }
   if (a === 'picker') { pickerOpen = !pickerOpen; renderGym(); if (pickerOpen) setTimeout(() => scrollToEl($('#picker'), 80), 30); return true; }
   if (t.dataset.pickEx) {
     const n = t.dataset.pickEx;

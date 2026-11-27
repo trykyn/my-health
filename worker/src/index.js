@@ -11,6 +11,8 @@
 //                  ibAdd = [인바디 기록] (같은 id 면 바꿈), ibDel = [id] → 다른 기기에서 넣은 기록을 지우지 않음
 //                  restore = 백업 파일 전체로 바꿈
 //                  mineDays = { 날짜: [{ id, name, min?, kcal?, note?, gym? }] } 내가 적은 그날 운동 (빈 목록이면 지움)
+//   POST /rest/{키} { endpoint, at } | { cancel: true }  ← 앱. 휴식 끝 시각(at)에 그 휴대폰으로 푸시 (내용 없음 → sw.js 가 문구를 정함)
+//                  앱이 화면에서 사라질 때 맡기고, 다시 보이면 취소. 키마다 RestAlarm 하나
 //
 // 키는 앱이 처음 열릴 때 만든 32자리 무작위 문자열. 키를 아는 사람만 읽고 쓸 수 있음.
 // 저장소 (KV): STORE — data:{키} → 위 JSON 하나
@@ -36,7 +38,23 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
 
     const [, kind, key] = url.pathname.split("/");
-    if (!["h", "d"].includes(kind) || !KEY_RE.test(key || "")) return json({ error: "not_found" }, 404);
+    if (!["h", "d", "rest"].includes(kind) || !KEY_RE.test(key || "")) return json({ error: "not_found" }, 404);
+
+    // 휴식 끝 알림 맡기기·취소
+    if (kind === "rest" && request.method === "POST") {
+      let b;
+      try { b = JSON.parse(await request.text()); } catch { return json({ error: "bad_json" }, 400); }
+      const stub = env.REST.get(env.REST.idFromName(key));
+      if (b.cancel) { await stub.fetch("https://rest/", { method: "POST", body: JSON.stringify({ cancel: true }) }); return json({ ok: true }); }
+      let ep;
+      try { ep = new URL(String(b.endpoint || "")); } catch { return json({ error: "bad_endpoint" }, 400); }
+      // 알려진 푸시 서버로만 보냄 (아무 주소로나 요청을 보내게 쓰이지 않게)
+      if (ep.protocol !== "https:" || !/(^|\.)(push\.apple\.com|fcm\.googleapis\.com|push\.services\.mozilla\.com|notify\.windows\.com)$/.test(ep.hostname)) return json({ error: "bad_endpoint" }, 400);
+      const at = Number(b.at);
+      if (!(at > Date.now() - 5000 && at < Date.now() + 30 * 60000)) return json({ error: "bad_time" }, 400);
+      await stub.fetch("https://rest/", { method: "POST", body: JSON.stringify({ endpoint: ep.href, at }) });
+      return json({ ok: true });
+    }
     const sk = `data:${key}`;
     const load = async () => ({ days: {}, inbody: [], gym: {}, mine: {}, cycle: {}, ...((await env.STORE.get(sk, "json")) || {}) });
 
@@ -193,4 +211,37 @@ function num(v) {
 
 function berlinToday() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+// ── 휴식 끝 알림 ──
+// 키마다 하나: 마지막으로 맡긴 시각에 한 번 푸시. 새로 맡기면 앞의 것은 바뀜
+export class RestAlarm {
+  constructor(state, env) { this.state = state; this.env = env; }
+  async fetch(request) {
+    const b = await request.json();
+    if (b.cancel) { await this.state.storage.deleteAlarm(); await this.state.storage.delete("job"); return new Response("ok"); }
+    await this.state.storage.put("job", { endpoint: b.endpoint });
+    await this.state.storage.setAlarm(Math.max(Date.now(), b.at));
+    return new Response("ok");
+  }
+  async alarm() {
+    const job = await this.state.storage.get("job");
+    await this.state.storage.delete("job");
+    if (job) { try { const st = await sendPush(this.env, job.endpoint); if (st >= 300) console.warn("push", st); } catch (e) { console.warn("push", String(e)); } }
+  }
+}
+
+// 푸시 서버(애플 등)에 "우리 앱이 보낸다"는 서명 (VAPID, ES256). 내용 없는 푸시라 암호화는 필요 없음
+const b64urlBytes = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64urlJson = o => b64urlBytes(new TextEncoder().encode(JSON.stringify(o)));
+async function vapidAuth(env, endpoint) {
+  const header = b64urlJson({ typ: "JWT", alg: "ES256" });
+  const claims = b64urlJson({ aud: new URL(endpoint).origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: "https://trykyn.github.io/my-health/" });
+  const key = await crypto.subtle.importKey("jwk", JSON.parse(env.VAPID_PRIVATE_JWK), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`${header}.${claims}`));
+  return `vapid t=${header}.${claims}.${b64urlBytes(sig)}, k=${env.VAPID_PUBLIC}`;
+}
+async function sendPush(env, endpoint) {
+  const r = await fetch(endpoint, { method: "POST", headers: { Authorization: await vapidAuth(env, endpoint), TTL: "120", Urgency: "high", "Content-Length": "0" }, body: "" });
+  return r.status;
 }

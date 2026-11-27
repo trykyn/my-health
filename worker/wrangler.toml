@@ -6,3 +6,17 @@ compatibility_date = "2026-10-01"
 kv_namespaces = [
   { binding = "STORE", id = "1a254c2c00e04739b5b213b8051a0343" }
 ]
+
+# 휴식 끝 알림: 앱이 화면에서 사라질 때(잠금·다른 앱) 휴식 끝 시각을 맡겨 두면 그때 푸시를 보냄.
+# 키마다 작은 타이머 하나 (Durable Object 알람, 무료 요금제는 SQLite 방식만 됨)
+[[durable_objects.bindings]]
+name = "REST"
+class_name = "RestAlarm"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RestAlarm"]
+
+[vars]
+# 알림 열쇠의 공개 부분 (앱에도 같은 값). 비밀 부분은 VAPID_PRIVATE_JWK 비밀 값 (npx wrangler secret put VAPID_PRIVATE_JWK)
+VAPID_PUBLIC = "BMFdtzLC25AvY2RPTToktD-MEisOnf0ffWZWew-jedQyeICtqAZWRWeBETLkuhW_83rdMrGrs_nZMZLV1GQn0hM"

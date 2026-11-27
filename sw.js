@@ -3,7 +3,7 @@
 // 홈 화면 앱이 껐다 켜도 예전 화면을 보여 주는 일을 막음.
 // 인터넷이 약해서(헬스장 지하 등) 3초 안에 답이 없으면 저장해 둔 화면을 먼저 보여 줌. 새 파일은 뒤에서 받아 둠.
 // 동기화 서버(workers.dev)로 가는 요청은 건드리지 않음.
-const CACHE = 'my-health-v25';
+const CACHE = 'my-health-v26';
 const WAIT = 3000;
 
 self.addEventListener('install', e => {
@@ -28,5 +28,21 @@ self.addEventListener('fetch', e => {
     // 먼저 오는 쪽: 네트워크 답, 또는 3초 뒤 캐시(있을 때만)
     const first = await Promise.race([net.catch(() => null), slow.then(c => c || net.catch(() => null))]);
     return first || (await cached) || (await net);
+  })());
+});
+
+// 휴식 끝 알림: 서버(worker)가 내용 없이 보내면 여기서 문구를 정해 보여 줌 (아이폰 알림 소리가 남)
+self.addEventListener('push', e => {
+  e.waitUntil(self.registration.showNotification('휴식 끝! 💪', {
+    body: '다음 세트 할 시간이에요', icon: 'icon-192.png', badge: 'icon-192.png', tag: 'rest', renotify: true, data: { url: './' },
+  }));
+});
+// 알림을 누르면 앱을 열거나, 이미 열려 있으면 그 화면으로
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) if ('focus' in c) return c.focus();
+    return self.clients.openWindow('./');
   })());
 });
