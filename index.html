@@ -301,16 +301,23 @@ ol.steps b { font-weight: 600; }
 .pk span { flex: 1; }
 .pk b { font-size: 13px; color: var(--accent); }
 .pk.have b { color: var(--muted); font-weight: 500; }
-.fig { flex: none; background: var(--field); border-radius: 14px; }
-.fig .pr { stroke: var(--muted); fill: none; stroke-width: 2.5; stroke-linecap: round; opacity: .45; }
-.fig .pr rect, .fig .pr polygon { fill: var(--muted); stroke: none; }
-.fig .bd path, .fig .far path { stroke: var(--accent); stroke-width: 5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.fig .far { opacity: .35; }
-.fig .hd { fill: var(--accent); }
-.fig .at path { stroke: var(--ink); fill: none; stroke-linecap: round; }
-.fig .at circle { fill: var(--ink); }
-.fig .at circle.pl { fill: none; stroke: var(--ink); stroke-width: 3; }
-.fig .at path.cb { stroke: var(--muted); stroke-width: 1; }
+/* 운동 그림: 산호색 운동복 + 짙은 레깅스 + 흰 운동화, 머리는 묶은 머리. 기구는 회색 틀 + 짙은 쿠션 */
+.fig { flex: none; background: var(--field); border-radius: 14px;
+  --skin: #f1c3a6; --hair: #4b2f25; --leg: #3a3343; --iron: #2c2a30; --frame: #b9afa4; --pad: #4a4350; --shoe: #ffffff; }
+@media (prefers-color-scheme: dark) { .fig { --skin: #e3b293; --hair: #7a5444; --leg: #6a6080; --iron: #ddd6ce; --frame: #8b8279; --pad: #70677c; } }
+.fig path, .fig line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.fig .pr { stroke: var(--frame); stroke-width: 3; }
+.fig .pr rect, .fig .pr polygon { fill: var(--pad); stroke: none; }
+.fig .pr circle { fill: var(--frame); stroke: none; }
+.fig .far { opacity: .5; }
+.fig .sk { stroke: var(--skin); } .fig .skf { fill: var(--skin); }
+.fig .lg { stroke: var(--leg); }
+.fig .tp { stroke: var(--accent); } .fig .tpf { fill: var(--accent); stroke: var(--accent); stroke-width: 2.5; }
+.fig .hr { stroke: var(--hair); } .fig .hrf { fill: var(--hair); }
+.fig .ey { fill: #2a2220; }
+.fig .so { stroke: var(--leg); } .fig .sh { stroke: var(--shoe); }
+.fig .ir { stroke: var(--iron); } .fig .irf { fill: var(--iron); }
+.fig .cb { stroke: var(--frame); stroke-width: 1.2; }
 .warn-card { background: var(--butter); color: var(--tile-ink); }
 .wo li.exli { display: block; padding: 0; }
 .exrow { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 8px 0; }
@@ -1006,7 +1013,7 @@ function bindChart() {
 // 그래프 밖을 누르면 말풍선 닫기
 document.addEventListener('pointerdown', e => { const t = $('#tip'); if (t && !t.hidden && bindChart.hide && !e.target.closest('#chart svg')) bindChart.hide(); }, true);
 
-// ── 운동 그림: 직접 그린 막대 인형이 시작 자세(A) ↔ 끝 자세(B)를 천천히 오가는 애니메이션 ──
+// ── 운동 그림: 직접 그린 사람(운동복·레깅스·운동화·묶은 머리)이 시작 자세(A) ↔ 끝 자세(B)를 천천히 오가는 애니메이션 ──
 // 각도는 도(°): 0 = 오른쪽(앞), 90 = 아래, -90 = 위, 180 = 뒤. 사람은 오른쪽을 보고 있음 (옆에서 본 모습).
 // front: true 는 앞에서 본 모습 (오른팔·오른다리 각도만 적으면 왼쪽은 거울처럼).
 // 키 순서: hx,hy 엉덩이 위치 / t 몸통 / a1,f1 가까운 팔(위팔·아래팔) / a2,f2 먼 팔 / l1,s1 가까운 다리(허벅지·정강이) / l2,s2 먼 다리
@@ -1152,46 +1159,73 @@ const FIG_DEFAULT = {
 const lerpPose = (A, B, e) => { const o = {}; for (const k of Object.keys(A)) o[k] = typeof A[k] === 'number' && typeof B[k] === 'number' ? A[k] + (B[k] - A[k]) * e : A[k]; return o; };
 const pl = pts => 'M' + pts.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join('L');
 
+// 그림 그리기: 뼈대(관절 위치)는 그대로, 그 위에 두께 있는 팔다리·몸통·머리를 겹쳐 그림
+// 순서: 먼 쪽 팔다리(흐리게) → 가까운 다리 → 몸통(운동복) → 목·머리 → 가까운 팔 → 기구
+const W = { thigh: 9, shin: 7, ua: 5.4, fa: 4.6 };
+const seg = (a, b, w, c) => `<path class="${c}" d="${pl([a, b])}" stroke-width="${w}"/>`;
+const lerpPt = (a, b, k = .5) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+const poly = (pts, c) => `<path class="${c}" d="${pl(pts)}Z"/>`;
+// 팔 하나: 어깨~팔꿈치 반은 소매(운동복 색), 나머지는 맨살, 손
+const arm = (sh, el, hd) => seg(sh, el, W.ua, 'sk') + seg(el, hd, W.fa, 'sk') + seg(sh, lerpPt(sh, el, .45), W.ua + 1.4, 'tp') + `<circle class="skf" cx="${hd[0].toFixed(1)}" cy="${hd[1].toFixed(1)}" r="2.5"/>`;
+// 다리 하나: 레깅스 + 운동화 (발끝은 정강이에 직각, 앞쪽으로)
+const leg = (hp, kn, ft, fa) => {
+  const heel = pt(ft, fa + 180, 1.6), toe = pt(ft, fa, 5.6);
+  return seg(hp, kn, W.thigh, 'lg') + seg(kn, ft, W.shin, 'lg') + `<path class="so" d="${pl([heel, toe])}" stroke-width="6"/><path class="sh" d="${pl([heel, toe])}" stroke-width="3.8"/>`;
+};
+// 옆모습 머리: 얼굴은 몸통 앞쪽(t+90)을 봄. 머리카락은 위·뒤를 덮고 뒤통수에 묶은 머리
+const headSide = (c, t) => {
+  const a1 = pt(c, t + 55, 5.4), a2 = pt(c, t - 125, 5.4);
+  return `<circle class="skf" cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="6.2"/><path class="hr" d="M${a1[0].toFixed(1)},${a1[1].toFixed(1)}A5.4 5.4 0 0 0 ${a2[0].toFixed(1)},${a2[1].toFixed(1)}" stroke-width="3.6"/>`
+    + `<circle class="hrf" cx="${pt(c, t - 50, 7.2)[0].toFixed(1)}" cy="${pt(c, t - 50, 7.2)[1].toFixed(1)}" r="3"/><circle class="ey" cx="${pt(c, t + 62, 3.4)[0].toFixed(1)}" cy="${pt(c, t + 62, 3.4)[1].toFixed(1)}" r=".9"/>`;
+};
+
 function figMarkup(p, def) {
   let far = '', body = '', att = '';
   let hands, knees, feet, sho, hip = [p.hx, p.hy], s1 = p.s1;
   if (p.front) {
-    const shY = p.hy - 30, sR = [p.hx + 8, shY], sL = [p.hx - 8, shY], hd = [p.hx, shY - 9];
+    // 앞모습: 어깨가 넓고 허리가 잘록한 운동복, 양팔·양다리, 정수리에 묶은 머리
+    const shY = p.hy - 30, sR = [p.hx + 8, shY], sL = [p.hx - 8, shY], hd = [p.hx, shY - 9.5];
     const aL = p.a2 ?? 180 - p.a, fL = p.f2 ?? 180 - p.f, lL = p.l2 ?? 180 - p.l, sLg = p.s2 ?? 180 - p.s;
     const eR = pt(sR, p.a, 16), hR = pt(eR, p.f, 15), eL = pt(sL, aL, 16), hL = pt(eL, fL, 15);
     const hipR = [p.hx + 5, p.hy], hipL = [p.hx - 5, p.hy];
     const kR = pt(hipR, p.l, 21), ftR = pt(kR, p.s, 21), kL = pt(hipL, lL, 21), ftL = pt(kL, sLg, 21);
-    body = `<path d="${pl([sL, sR])}M${p.hx},${shY}L${p.hx},${p.hy}${pl([hipL, hipR])}${pl([sR, eR, hR])}${pl([sL, eL, hL])}${pl([hipR, kR, ftR])}${pl([hipL, kL, ftL])}"/><circle class="hd" cx="${hd[0]}" cy="${hd[1]}" r="6"/>`;
+    const torso = poly([[p.hx - 9.5, shY], [p.hx + 9.5, shY], [p.hx + 6, p.hy - 9], [p.hx + 7, p.hy + 1], [p.hx - 7, p.hy + 1], [p.hx - 6, p.hy - 9]], 'tpf');
+    body = leg(hipR, kR, ftR, 0) + leg(hipL, kL, ftL, 180) + torso + seg([p.hx, shY], [p.hx, shY - 4], 4.2, 'sk')
+      + `<circle class="skf" cx="${hd[0]}" cy="${hd[1]}" r="6.2"/><path class="hr" d="M${hd[0] - 5.3},${hd[1] + 1}A5.4 5.4 0 0 1 ${hd[0] + 5.3},${hd[1] + 1}" stroke-width="3.6"/><circle class="hrf" cx="${hd[0]}" cy="${hd[1] - 7.6}" r="3"/>`
+      + `<circle class="ey" cx="${hd[0] - 2.2}" cy="${hd[1] + .6}" r=".9"/><circle class="ey" cx="${hd[0] + 2.2}" cy="${hd[1] + .6}" r=".9"/>`
+      + arm(sR, eR, hR) + arm(sL, eL, hL);
     hands = [hR, hL]; knees = [kR, kL]; feet = [ftR, ftL]; sho = [p.hx, shY];
   } else {
     sho = pt(hip, p.t, 30);
-    const hd = pt(sho, p.t, 9);
     const a2 = p.a2 ?? p.a1, f2 = p.f2 ?? p.f1, l2 = p.l2 ?? p.l1, s2 = p.s2 ?? p.s1;
     const e1 = pt(sho, p.a1, 16), h1 = pt(e1, p.f1, 15), e2 = pt(sho, a2, 16), h2 = pt(e2, f2, 15);
     const k1 = pt(hip, p.l1, 21), ft1 = pt(k1, p.s1, 21), k2 = pt(hip, l2, 21), ft2 = pt(k2, s2, 21);
-    far = `<path d="${pl([sho, e2, h2])}${pl([hip, k2, ft2])}"/>`;
-    body = `<path d="${pl([hip, sho])}${pl([sho, e1, h1])}${pl([hip, k1, ft1])}"/><circle class="hd" cx="${hd[0].toFixed(1)}" cy="${hd[1].toFixed(1)}" r="6"/>`;
+    // 몸통: 엉덩이 쪽이 조금 좁고 가슴 쪽이 넓은 모양 (앞 = t+90)
+    const torso = poly([pt(hip, p.t - 90, 4.6), pt(hip, p.t + 90, 4.4), pt(pt(sho, p.t + 180, 5), p.t + 90, 5.8), pt(sho, p.t + 90, 4.2), pt(sho, p.t - 90, 4.6)], 'tpf');
+    far = arm(sho, e2, h2) + leg(hip, k2, ft2, s2 - 90);
+    body = leg(hip, k1, ft1, p.s1 - 90) + torso + seg(sho, pt(sho, p.t, 4), 4.2, 'sk') + headSide(pt(sho, p.t, 9.6), p.t) + arm(sho, e1, h1);
     hands = [h1, h2]; knees = [k1, k2]; feet = [ft1, ft2];
   }
+  // 덤벨: 손잡이 + 양쪽 원판
   const dumbbell = (h, ang) => {
     const a = pt(h, ang, 5), b = pt(h, ang + 180, 5);
-    return `<path d="${pl([a, b])}" stroke-width="2.5"/><path d="${pl([pt(a, ang + 90, 3.5), pt(a, ang - 90, 3.5)])}${pl([pt(b, ang + 90, 3.5), pt(b, ang - 90, 3.5)])}" stroke-width="4"/>`;
+    return `<path class="ir" d="${pl([a, b])}" stroke-width="2.2"/><path class="ir" d="${pl([pt(a, ang + 90, 3.4), pt(a, ang - 90, 3.4)])}${pl([pt(b, ang + 90, 3.4), pt(b, ang - 90, 3.4)])}" stroke-width="4.6"/>`;
   };
   for (const a of def.att || []) {
     if (a.startsWith('cable:')) { const [x, y] = a.slice(6).split(',').map(Number); att += `<path class="cb" d="M${x},${y}L${hands[0][0].toFixed(1)},${hands[0][1].toFixed(1)}"/>`; }
-    else if (a === 'handle') att += hands.map(h => `<circle cx="${h[0].toFixed(1)}" cy="${h[1].toFixed(1)}" r="2.6"/>`).join('');
-    else if (a === 'bar') att += `<path d="M${(hands[0][0] - 10).toFixed(1)},${hands[0][1].toFixed(1)}h20" stroke-width="2.5"/>`;
+    else if (a === 'handle') att += hands.map(h => `<circle class="irf" cx="${h[0].toFixed(1)}" cy="${h[1].toFixed(1)}" r="2.8"/>`).join('');
+    else if (a === 'bar') att += `<path class="ir" d="M${(hands[0][0] - 10).toFixed(1)},${hands[0][1].toFixed(1)}h20" stroke-width="2.6"/>`;
     else if (a === 'db') att += dumbbell(hands[0], 90) + (p.front ? dumbbell(hands[1], 90) : '');
     else if (a === 'db1') att += dumbbell(hands[0], 90);
     else if (a === 'dbf') att += hands.map(h => dumbbell(h, 90)).join('');
-    else if (a === 'smith') att += `<circle cx="${sho[0].toFixed(1)}" cy="${(sho[1] - 1).toFixed(1)}" r="4"/>`;
-    else if (a === 'barhip') att += `<circle cx="${hip[0].toFixed(1)}" cy="${(hip[1] - 5).toFixed(1)}" r="4.5"/>`;
-    else if (a === 'plate') att += `<circle class="pl" cx="${hip[0].toFixed(1)}" cy="${(hip[1] - 7).toFixed(1)}" r="8"/>`;
-    else if (a === 'pad') { const c = pt(knees[0], s1, 17); att += `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4"/>`; }
-    else if (a === 'plat') { const f = feet[0]; att += `<path d="${pl([pt(f, p.s1 - 90, 11), pt(f, p.s1 + 90, 11)])}" stroke-width="3"/>`; }
-    else if (a === 'padOut' || a === 'padIn') att += knees.map((k, i) => { const dx = (i === 0 ? 1 : -1) * (a === 'padOut' ? 5 : -5); return `<circle cx="${(k[0] + dx).toFixed(1)}" cy="${k[1].toFixed(1)}" r="3.5"/>`; }).join('');
+    else if (a === 'smith') att += `<path class="ir" d="M${(sho[0] - 12).toFixed(1)},${(sho[1] - 1).toFixed(1)}h24" stroke-width="3"/><circle class="irf" cx="${sho[0].toFixed(1)}" cy="${(sho[1] - 1).toFixed(1)}" r="3.2"/>`;
+    else if (a === 'barhip') att += `<path class="ir" d="M${(hip[0] - 10).toFixed(1)},${(hip[1] - 6).toFixed(1)}h20" stroke-width="2.6"/><circle class="irf" cx="${hip[0].toFixed(1)}" cy="${(hip[1] - 6).toFixed(1)}" r="5.5"/>`;
+    else if (a === 'plate') att += `<circle class="irf" cx="${hip[0].toFixed(1)}" cy="${(hip[1] - 8).toFixed(1)}" r="8"/><circle class="skf" cx="${hip[0].toFixed(1)}" cy="${(hip[1] - 8).toFixed(1)}" r="2"/>`;
+    else if (a === 'pad') { const c = pt(knees[0], s1, 17); att += `<circle class="irf" cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4.2"/>`; }
+    else if (a === 'plat') { const f = feet[0]; att += `<path class="ir" d="${pl([pt(f, p.s1 - 90, 12), pt(f, p.s1 + 90, 10)])}" stroke-width="3.4"/>`; }
+    else if (a === 'padOut' || a === 'padIn') att += knees.map((k, i) => { const dx = (i === 0 ? 1 : -1) * (a === 'padOut' ? 6 : -6); return `<circle class="irf" cx="${(k[0] + dx).toFixed(1)}" cy="${k[1].toFixed(1)}" r="3.6"/>`; }).join('');
   }
-  return `<g class="far">${far}</g><g class="bd">${body}</g><g class="at">${att}</g>`;
+  return `<g class="far">${far}</g><g>${body}</g><g>${att}</g>`;
 }
 const figDef = name => FIG[name] || FIG_DEFAULT;
 // 그림마다 박자를 조금씩 다르게. 이름으로 정해서 화면을 다시 그려도 동작이 튀지 않음
