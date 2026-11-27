@@ -316,6 +316,7 @@ ol.steps b { font-weight: 600; }
 .fig .hr { stroke: var(--hair); } .fig .hrf { fill: var(--hair); }
 .fig .ey { fill: #2a2220; }
 .fig .so { stroke: var(--leg); } .fig .sh { stroke: var(--shoe); }
+.fig .pd { stroke: var(--pad); }
 .fig .ir { stroke: var(--iron); } .fig .irf { fill: var(--iron); }
 .fig .cb { stroke: var(--frame); stroke-width: 1.2; }
 .warn-card { background: var(--butter); color: var(--tile-ink); }
@@ -1149,6 +1150,62 @@ const FIG = {
     B: { hx: 48, hy: 46, t: -88, a1: 80, f1: 0, a2: 60, f2: -15, l1: 105, s1: 82, l2: 70, s2: 110 },
     props: '<line x1="20" y1="94" x2="84" y2="94"/><line x1="80" y1="94" x2="72" y2="20"/><line x1="30" y1="90" x2="66" y2="90"/>', att: ['handle'], period: 1600,
   },
+  // ── 2026-11-27 추가 ──
+  '어시스트 풀업': {
+    A: { hx: 48, hy: 64, t: -92, a1: -84, f1: -86, l1: 80, s1: 178 },
+    B: { hx: 48, hy: 44, t: -92, a1: -150, f1: -10, l1: 80, s1: 178 },
+    props: FLOOR + '<line x1="82" y1="2" x2="82" y2="95"/><line x1="34" y1="3" x2="82" y2="3"/>', att: ['handle', 'kneePad'],
+  },
+  '스트레이트 암 풀다운': {
+    A: { hx: 46, hy: 52, t: -75, a1: -35, f1: -35, l1: 88, s1: 92, l2: 96, s2: 88 },
+    B: { hx: 46, hy: 52, t: -75, a1: 100, f1: 100, l1: 88, s1: 92, l2: 96, s2: 88 },
+    props: FLOOR + '<line x1="90" y1="2" x2="90" y2="95"/><circle cx="86" cy="6" r="3"/>', att: ['cable:86,6', 'bar'],
+  },
+  '머신 시티드 로우': {
+    A: { hx: 40, hy: 70, t: -88, a1: -2, f1: 0, l1: 0, s1: 90 },
+    B: { hx: 40, hy: 70, t: -88, a1: 140, f1: -15, l1: 0, s1: 90 },
+    props: FLOOR + SEAT + '<rect x="50" y="32" width="6" height="26" rx="3"/><line x1="53" y1="58" x2="53" y2="95"/><line x1="84" y1="28" x2="84" y2="95"/>', att: ['handle'],
+  },
+  '인클라인 체스트 프레스': {
+    A: { hx: 42, hy: 70, t: -110, a1: 120, f1: -70, l1: 0, s1: 90 },
+    B: { hx: 42, hy: 70, t: -110, a1: -50, f1: -50, l1: 0, s1: 90 },
+    props: FLOOR + '<rect x="30" y="72" width="26" height="5" rx="2.5"/><line x1="42" y1="77" x2="42" y2="94"/><polygon points="33,73 39,73 25,33 19,35"/>', att: ['handle'],
+  },
+  '케이블 레터럴 레이즈': {
+    A: { front: 1, hx: 50, hy: 52, a: 95, f: 92, a2: 95, f2: 95, l: 92, s: 90 },
+    B: { front: 1, hx: 50, hy: 52, a: 10, f: 5, a2: 95, f2: 95, l: 92, s: 90 },
+    props: FLOOR + '<line x1="8" y1="20" x2="8" y2="95"/><circle cx="12" cy="88" r="3"/>', att: ['cable:12,88', 'handle1'],
+  },
+  '레그 익스텐션': {
+    A: { hx: 40, hy: 66, t: -98, a1: 80, f1: 0, l1: 0, s1: 90 },
+    B: { hx: 40, hy: 66, t: -98, a1: 80, f1: 0, l1: 0, s1: 8 },
+    props: FLOOR + '<rect x="24" y="68" width="34" height="5" rx="2.5"/><rect x="22" y="30" width="6" height="40" rx="3"/><line x1="40" y1="73" x2="40" y2="95"/>', att: ['pad'],
+  },
+  '케이블 힙 킥백': {
+    A: { hx: 46, hy: 52, t: -78, a1: 20, f1: 25, l1: 95, s1: 92, l2: 88, s2: 90 },
+    B: { hx: 46, hy: 52, t: -78, a1: 20, f1: 25, l1: 150, s1: 122, l2: 88, s2: 90 },
+    props: FLOOR + '<line x1="84" y1="10" x2="84" y2="95"/><line x1="6" y1="60" x2="6" y2="95"/><circle cx="9" cy="88" r="3"/>', att: ['cableFoot:9,88', 'handle'],
+  },
+  '고블릿 스쿼트': {
+    A: { hx: 50, hy: 52, t: -90, a1: 70, f1: -95, l1: 90, s1: 90 },
+    B: { hx: 42, hy: 72, t: -62, a1: 98, f1: -67, l1: 20, s1: 128 },
+    props: FLOOR, att: ['db1'],
+  },
+  '러닝 트레드밀': {
+    A: { hx: 46, hy: 48, t: -80, a1: 115, f1: 40, a2: 65, f2: -30, l1: 55, s1: 100, l2: 115, s2: 160 },
+    B: { hx: 46, hy: 48, t: -80, a1: 65, f1: -30, a2: 115, f2: 40, l1: 115, s1: 160, l2: 55, s2: 100 },
+    props: FLOOR + '<rect x="8" y="88" width="76" height="6" rx="3"/><line x1="80" y1="88" x2="74" y2="38"/><line x1="74" y1="38" x2="62" y2="42"/>', period: 900,
+  },
+  '실내 자전거': {
+    A: { hx: 40, hy: 50, t: -60, a1: 40, f1: 60, l1: 20, s1: 94, l2: 45, s2: 130 },
+    B: { hx: 40, hy: 50, t: -60, a1: 40, f1: 60, l1: 45, s1: 130, l2: 20, s2: 94 },
+    props: '<line x1="30" y1="94" x2="78" y2="94"/><line x1="44" y1="94" x2="50" y2="80"/><line x1="58" y1="94" x2="50" y2="80"/><line x1="41" y1="55" x2="50" y2="80"/><line x1="50" y1="80" x2="70" y2="52"/><line x1="70" y1="52" x2="74" y2="44"/><rect x="32" y="51" width="16" height="4.5" rx="2"/><circle cx="50" cy="80" r="4"/>', att: ['handle'], period: 1100,
+  },
+  '스텝밀': {
+    A: { hx: 34, hy: 46, t: -80, a1: 50, f1: 65, l1: 55, s1: 96, l2: 100, s2: 100 },
+    B: { hx: 34, hy: 46, t: -80, a1: 50, f1: 65, l1: 100, s1: 100, l2: 55, s2: 96 },
+    props: '<path d="M8,95V88H28V81H48V74H68V95Z"/><line x1="48" y1="42" x2="80" y2="42"/><line x1="78" y1="42" x2="78" y2="95"/>', att: ['handle'], period: 1500,
+  },
 };
 const FIG_DEFAULT = {
   A: { hx: 50, hy: 52, t: -90, a1: 95, f1: 92, a2: 85, f2: 88, l1: 92, s1: 88, l2: 88, s2: 92 },
@@ -1223,6 +1280,9 @@ function figMarkup(p, def) {
   };
   for (const a of def.att || []) {
     if (a.startsWith('cable:')) { const [x, y] = a.slice(6).split(',').map(Number); att += `<path class="cb" d="M${x},${y}L${hands[0][0].toFixed(1)},${hands[0][1].toFixed(1)}"/>`; }
+    else if (a === 'handle1') att += `<circle class="irf" cx="${hands[0][0].toFixed(1)}" cy="${hands[0][1].toFixed(1)}" r="2.8"/>`;
+    else if (a.startsWith('cableFoot:')) { const [x, y] = a.slice(10).split(',').map(Number), f = feet[0]; att += `<path class="cb" d="M${x},${y}L${f[0].toFixed(1)},${f[1].toFixed(1)}"/><circle class="irf" cx="${f[0].toFixed(1)}" cy="${(f[1] - 2).toFixed(1)}" r="2.4"/>`; }
+    else if (a === 'kneePad') att += `<path class="pd" d="${pl([pt(knees[0], 90, 5), pt(feet[0], 90, 5)])}" stroke-width="5"/>`;
     else if (a === 'handle') att += hands.map(h => `<circle class="irf" cx="${h[0].toFixed(1)}" cy="${h[1].toFixed(1)}" r="2.8"/>`).join('');
     else if (a === 'bar') att += `<path class="ir" d="M${(hands[0][0] - 10).toFixed(1)},${hands[0][1].toFixed(1)}h20" stroke-width="2.6"/>`;
     else if (a === 'db') att += dumbbell(hands[0], 90) + (p.front ? dumbbell(hands[1], 90) : '');
@@ -1266,12 +1326,12 @@ requestAnimationFrame(figLoop);
 //         sessions: { 날짜: { start, end?, min?, kcal?, items: [{ ex, sets: [{ w, r, m, done }] }] } }, custom: [{ name }] }
 //         start 가 없으면 '오늘의 헬스 플랜' (헬스장 가기 전에 짜 둔 것). 헬스장에서 '시작'을 누르면 start 가 생김
 const EX_GROUPS = [
-  ['등', ['케이블 시티드 로우', '랫풀다운', '머신 랫풀다운', '원암 덤벨 로우', '덤벨 로우', '백 익스텐션']],
-  ['가슴', ['머신 체스트 프레스']],
-  ['어깨', ['머신 숄더 프레스', '시티드 덤벨 숄더 프레스', '덤벨 레터럴 레이즈', '케이블 익스터널 로테이션']],
+  ['등', ['케이블 시티드 로우', '머신 시티드 로우', '랫풀다운', '머신 랫풀다운', '어시스트 풀업', '스트레이트 암 풀다운', '원암 덤벨 로우', '덤벨 로우', '백 익스텐션']],
+  ['가슴', ['머신 체스트 프레스', '인클라인 체스트 프레스']],
+  ['어깨', ['머신 숄더 프레스', '시티드 덤벨 숄더 프레스', '덤벨 레터럴 레이즈', '케이블 레터럴 레이즈', '케이블 익스터널 로테이션']],
   ['팔', ['케이블 바이셉 컬', '덤벨 해머 컬', '덤벨 트라이셉스 익스텐션', '덤벨 트라이셉 킥백', '케이블 트라이셉 푸시다운']],
-  ['하체·엉덩이', ['스미스머신 스쿼트', '머신 레그 프레스', '시티드 레그 컬', '덤벨 스티프 레그 데드리프트', '힙 쓰러스트', '플레이트 힙 쓰러스트', '힙 어브덕션', '힙 어덕션']],
-  ['유산소', ['일립티컬 머신']],
+  ['하체·엉덩이', ['스미스머신 스쿼트', '고블릿 스쿼트', '머신 레그 프레스', '레그 익스텐션', '시티드 레그 컬', '덤벨 스티프 레그 데드리프트', '힙 쓰러스트', '플레이트 힙 쓰러스트', '케이블 힙 킥백', '힙 어브덕션', '힙 어덕션']],
+  ['유산소', ['러닝 트레드밀', '일립티컬 머신', '실내 자전거', '스텝밀']],
 ];
 const G = () => {
   const g = (S.data.gym = S.data.gym || {});
@@ -1364,17 +1424,17 @@ const pastPlan = () => Object.keys(G().sessions).filter(d => d < todayStr() && d
 //  6. 점진적 과부하: 지난번에 모든 세트를 12회 이상 했으면 무게 +2.5kg, 10회부터 다시
 //  7. 많이 쓴 부위는 쉼(러닝·걸음이 많으면 하체는 엉덩이만), 생리 1~3일째는 30분·2세트로 가볍게
 const RECO_PICK = {
-  '등': ['머신 랫풀다운', '케이블 시티드 로우', '랫풀다운', '백 익스텐션'],
-  '하체·엉덩이': ['덤벨 스티프 레그 데드리프트', '힙 쓰러스트', '머신 레그 프레스', '시티드 레그 컬', '힙 어브덕션', '플레이트 힙 쓰러스트', '스미스머신 스쿼트', '힙 어덕션'],
-  '가슴': ['머신 체스트 프레스'],
-  '어깨': ['덤벨 레터럴 레이즈', '머신 숄더 프레스', '시티드 덤벨 숄더 프레스'],
+  '등': ['머신 랫풀다운', '케이블 시티드 로우', '머신 시티드 로우', '랫풀다운', '어시스트 풀업', '스트레이트 암 풀다운', '백 익스텐션'],
+  '하체·엉덩이': ['덤벨 스티프 레그 데드리프트', '힙 쓰러스트', '머신 레그 프레스', '시티드 레그 컬', '레그 익스텐션', '케이블 힙 킥백', '힙 어브덕션', '플레이트 힙 쓰러스트', '고블릿 스쿼트', '스미스머신 스쿼트', '힙 어덕션'],
+  '가슴': ['머신 체스트 프레스', '인클라인 체스트 프레스'],
+  '어깨': ['덤벨 레터럴 레이즈', '케이블 레터럴 레이즈', '머신 숄더 프레스', '시티드 덤벨 숄더 프레스'],
   '팔': ['케이블 트라이셉 푸시다운', '덤벨 해머 컬', '케이블 바이셉 컬'],
 };
 const LIKED = ['덤벨 스티프 레그 데드리프트']; // 좋아하는 운동은 먼저
 const WARMUP = '케이블 익스터널 로테이션';
 // 손목 주의: 손목에 무게가 실리거나 꺾이는 운동. 하루 하나만 (추천·직접 추가 모두)
 const CAUTION = {
-  '원암 덤벨 로우': '손목', '덤벨 로우': '손목', '스미스머신 스쿼트': '손목', '덤벨 스티프 레그 데드리프트': '손목',
+  '원암 덤벨 로우': '손목', '덤벨 로우': '손목', '스미스머신 스쿼트': '손목', '고블릿 스쿼트': '손목', '덤벨 스티프 레그 데드리프트': '손목',
   '시티드 덤벨 숄더 프레스': '손목', '케이블 바이셉 컬': '손목', '덤벨 트라이셉스 익스텐션': '손목', '덤벨 트라이셉 킥백': '손목',
 };
 const wristUsed = s => (s ? s.items : []).find(i => CAUTION[i.ex]);
@@ -1447,7 +1507,7 @@ function recommendPlan() {
   for (const d of doneDays(addDays(today, 1)).reverse()) for (const it of G().sessions[d].items) triedAt[it.ex] = d;
   // 부위 안에서: 좋아하는 것 → 해 본 것(최근 순) → 기본 순서. 손목 주의 운동은 이미 하나 있으면 건너뜀
   const pickFrom = (g, k) => {
-    const list = g === '하체·엉덩이' && legBusy ? ['덤벨 스티프 레그 데드리프트', '힙 쓰러스트', '플레이트 힙 쓰러스트', '힙 어브덕션'] : RECO_PICK[g];
+    const list = g === '하체·엉덩이' && legBusy ? ['덤벨 스티프 레그 데드리프트', '힙 쓰러스트', '케이블 힙 킥백', '플레이트 힙 쓰러스트', '힙 어브덕션'] : RECO_PICK[g];
     const wristTaken = chosen.some(c => CAUTION[c.ex]);
     return [...list].filter(n => !chosen.some(c => c.ex === n) && !(wristTaken && CAUTION[n]))
       .sort((a, b) => LIKED.includes(b) - LIKED.includes(a) || (triedAt[b] || '').localeCompare(triedAt[a] || '') || list.indexOf(a) - list.indexOf(b))[k];
